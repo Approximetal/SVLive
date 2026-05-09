@@ -80,7 +80,13 @@ Configure your Anthropic API key in Settings → AI Configuration, then describe
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `VITAL_PRESETS_DIR` | Factory Vital preset directory | `~/music/Vital` |
-| `JEK_PRESETS_DIR` | Custom Jek preset directory | `~/music/Jek's Vital Presets` |
+| `JEK_PRESETS_DIR` | Community Jek preset directory | `~/music/Jek's Vital Presets` |
+
+### Where to Get Presets
+
+**Factory Presets** — Download the free Vital synthesizer from [vital.audio](https://vital.audio/#getvital). The installer includes ~75 factory presets in the `Vital/` folder.
+
+**Jek's Presets** — A massive community collection of 2,225+ presets shared on [Reddit](https://www.reddit.com/r/musicproduction/comments/1hti74x/2432_free_vital_presets/). Download the `.7z` archive from [Dropbox](https://www.dropbox.com/scl/fi/9okgsmcnmtdyxl9hpcjy3/Jek-s-Vital-Presets.7z?rlkey=haxivanm4761nxq5qjjsrctwj&e=1&st=fzjplnxc&dl=0) and extract to `~/music/Jek's Vital Presets/`.
 
 ## Updating Submodules
 
