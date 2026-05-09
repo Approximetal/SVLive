@@ -1,0 +1,6 @@
+{
+  "baseURL": "https://api.example.com",
+  "authToken": "第三方令牌，对应环境变量 ANTHROPIC_AUTH_TOKEN",
+  "authStyle": "authToken",
+  "model": "claude-sonnet-4-6"
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "ah_eh_ee_oh",
+    "file": "code/ah_eh_ee_oh.js"
+  },
+  {
+    "name": "fm_drum_circle",
+    "file": "code/fm_drum_circle.js"
+  },
+  {
+    "name": "plucked_string",
+    "file": "code/plucked_string.js"
+  },
+  {
+    "name": "shepard_tone_template",
+    "file": "code/shepard_tone_template.js"
+  },
+  {
+    "name": "staggered_phrases",
+    "file": "code/staggered_phrases.js"
+  },
+  {
+    "name": "text_to_wavetable_template",
+    "file": "code/text_to_wavetable_template.js"
+  },
+  {
+    "name": "touch_tone",
+    "file": "code/touch_tone.js"
+  }
+]

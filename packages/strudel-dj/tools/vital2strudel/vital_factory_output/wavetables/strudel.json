@@ -1,0 +1,39 @@
+{
+  "_base": "https://raw.githubusercontent.com/strudel-dj/vital-wavetables/main/",
+  "basic_shapes": [
+    "basic_shapes.wav"
+  ],
+  "classic_blend": [
+    "classic_blend.wav"
+  ],
+  "classic_fade": [
+    "classic_fade.wav"
+  ],
+  "harmonic_series": [
+    "harmonic_series.wav"
+  ],
+  "pulse_width": [
+    "pulse_width.wav"
+  ],
+  "quad_saw": [
+    "quad_saw.wav"
+  ],
+  "three_graces": [
+    "three_graces.wav"
+  ],
+  "low_high_fold": [
+    "low_high_fold.wav"
+  ],
+  "post_modern_pulse": [
+    "post_modern_pulse.wav"
+  ],
+  "saws_for_days": [
+    "saws_for_days.wav"
+  ],
+  "vital_sine_2": [
+    "vital_sine_2.wav"
+  ],
+  "vital_sine": [
+    "vital_sine.wav"
+  ]
+}

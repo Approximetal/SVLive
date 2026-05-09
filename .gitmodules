@@ -1,0 +1,24 @@
+[submodule "packages/mcp"]
+	path = packages/mcp
+	url = https://github.com/williamzujkowski/live-coding-music-mcp.git
+[submodule "reference/strudel-claude-music-generator"]
+	path = reference/strudel-claude-music-generator
+	url = https://github.com/etbars/strudel-claude-music-generator
+[submodule "reference/strudel-llm-docs"]
+	path = reference/strudel-llm-docs
+	url = https://github.com/calvinw/strudel-llm-docs
+[submodule "reference/Vita"]
+	path = reference/Vita
+	url = https://github.com/DBraun/Vita
+[submodule "reference/vital"]
+	path = reference/vital
+	url = https://github.com/mtytel/vital
+[submodule "reference/strudel"]
+	path = reference/strudel
+	url = https://codeberg.org/uzu/strudel
+[submodule "reference/MIDI-To-Strudel"]
+	path = reference/MIDI-To-Strudel
+	url = https://github.com/Emanuel-de-Jong/MIDI-To-Strudel
+[submodule "reference/midi-to-strudel-web"]
+	path = reference/midi-to-strudel-web
+	url = https://github.com/rayanfer32/midi-to-strudel-web

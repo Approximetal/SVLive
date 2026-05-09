@@ -1,0 +1,531 @@
+{
+  "base_url": "/vital-wavetables/",
+  "presets": [
+    {
+      "name": "Banana Wob",
+      "slug": "banana_wob",
+      "pack": "Afro",
+      "wavetables": 1,
+      "file": "code/banana_wob.js"
+    },
+    {
+      "name": "Kick Drum 1",
+      "slug": "kick_drum_1",
+      "pack": "Afro",
+      "wavetables": 1,
+      "file": "code/kick_drum_1.js"
+    },
+    {
+      "name": "Random Amp Growl",
+      "slug": "random_amp_growl",
+      "pack": "Afro",
+      "wavetables": 1,
+      "file": "code/random_amp_growl.js"
+    },
+    {
+      "name": "Cinema Bells",
+      "slug": "cinema_bells",
+      "pack": "Billain",
+      "wavetables": 1,
+      "file": "code/cinema_bells.js"
+    },
+    {
+      "name": "Railgun",
+      "slug": "railgun",
+      "pack": "Billain",
+      "wavetables": 0,
+      "file": "code/railgun.js"
+    },
+    {
+      "name": "Ceramic",
+      "slug": "ceramic",
+      "pack": "Databroth",
+      "wavetables": 1,
+      "file": "code/ceramic.js"
+    },
+    {
+      "name": "Disrupt",
+      "slug": "disrupt",
+      "pack": "Databroth",
+      "wavetables": 2,
+      "file": "code/disrupt.js"
+    },
+    {
+      "name": "Feeder",
+      "slug": "feeder",
+      "pack": "Databroth",
+      "wavetables": 0,
+      "file": "code/feeder.js"
+    },
+    {
+      "name": "Fleet",
+      "slug": "fleet",
+      "pack": "Databroth",
+      "wavetables": 2,
+      "file": "code/fleet.js"
+    },
+    {
+      "name": "Gorgled",
+      "slug": "gorgled",
+      "pack": "Databroth",
+      "wavetables": 1,
+      "file": "code/gorgled.js"
+    },
+    {
+      "name": "Snowcrash",
+      "slug": "snowcrash",
+      "pack": "Databroth",
+      "wavetables": 3,
+      "file": "code/snowcrash.js"
+    },
+    {
+      "name": "Ah Eh Ee Oh",
+      "slug": "ah_eh_ee_oh",
+      "pack": "Factory",
+      "wavetables": 0,
+      "file": "code/ah_eh_ee_oh.js"
+    },
+    {
+      "name": "FM Drum Circle",
+      "slug": "fm_drum_circle",
+      "pack": "Factory",
+      "wavetables": 1,
+      "file": "code/fm_drum_circle.js"
+    },
+    {
+      "name": "Plucked String",
+      "slug": "plucked_string",
+      "pack": "Factory",
+      "wavetables": 0,
+      "file": "code/plucked_string.js"
+    },
+    {
+      "name": "Shepard Tone Template",
+      "slug": "shepard_tone_template",
+      "pack": "Factory",
+      "wavetables": 1,
+      "file": "code/shepard_tone_template.js"
+    },
+    {
+      "name": "Staggered Phrases",
+      "slug": "staggered_phrases",
+      "pack": "Factory",
+      "wavetables": 1,
+      "file": "code/staggered_phrases.js"
+    },
+    {
+      "name": "Text To Wavetable Template",
+      "slug": "text_to_wavetable_template",
+      "pack": "Factory",
+      "wavetables": 0,
+      "file": "code/text_to_wavetable_template.js"
+    },
+    {
+      "name": "Touch Tone",
+      "slug": "touch_tone",
+      "pack": "Factory",
+      "wavetables": 2,
+      "file": "code/touch_tone.js"
+    },
+    {
+      "name": "Digestive Trauma",
+      "slug": "digestive_trauma",
+      "pack": "Glorkglunk",
+      "wavetables": 0,
+      "file": "code/digestive_trauma.js"
+    },
+    {
+      "name": "Special Glitch Thing",
+      "slug": "special_glitch_thing",
+      "pack": "Glorkglunk",
+      "wavetables": 0,
+      "file": "code/special_glitch_thing.js"
+    },
+    {
+      "name": "Squish Clicker",
+      "slug": "squish_clicker",
+      "pack": "Glorkglunk",
+      "wavetables": 1,
+      "file": "code/squish_clicker.js"
+    },
+    {
+      "name": "THUNK",
+      "slug": "thunk",
+      "pack": "Glorkglunk",
+      "wavetables": 1,
+      "file": "code/thunk.js"
+    },
+    {
+      "name": "Thumpus",
+      "slug": "thumpus",
+      "pack": "Glorkglunk",
+      "wavetables": 0,
+      "file": "code/thumpus.js"
+    },
+    {
+      "name": "Swiss Army Knife",
+      "slug": "swiss_army_knife",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 1,
+      "file": "code/swiss_army_knife.js"
+    },
+    {
+      "name": "Boot Scre3n",
+      "slug": "boot_scre3n",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 2,
+      "file": "code/boot_scre3n.js"
+    },
+    {
+      "name": "Memory Leak",
+      "slug": "memory_leak",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 3,
+      "file": "code/memory_leak.js"
+    },
+    {
+      "name": "Oolacile Evil Dubstep Bass",
+      "slug": "oolacile_evil_dubstep_bass",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 0,
+      "file": "code/oolacile_evil_dubstep_bass.js"
+    },
+    {
+      "name": "Satellites",
+      "slug": "satellites",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 2,
+      "file": "code/satellites.js"
+    },
+    {
+      "name": "Space Station",
+      "slug": "space_station",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 3,
+      "file": "code/space_station.js"
+    },
+    {
+      "name": "Simple Weoum",
+      "slug": "simple_weoum",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 0,
+      "file": "code/simple_weoum.js"
+    },
+    {
+      "name": "VLT Future Gun",
+      "slug": "vlt_future_gun",
+      "pack": "Halcyon Future Riddim Vol 1",
+      "wavetables": 3,
+      "file": "code/vlt_future_gun.js"
+    },
+    {
+      "name": "Analog Pad",
+      "slug": "analog_pad",
+      "pack": "In The Mix",
+      "wavetables": 1,
+      "file": "code/analog_pad.js"
+    },
+    {
+      "name": "Distant Majestic Lead",
+      "slug": "distant_majestic_lead",
+      "pack": "In The Mix",
+      "wavetables": 0,
+      "file": "code/distant_majestic_lead.js"
+    },
+    {
+      "name": "Growl Bass Sidechain",
+      "slug": "growl_bass_sidechain",
+      "pack": "In The Mix",
+      "wavetables": 1,
+      "file": "code/growl_bass_sidechain.js"
+    },
+    {
+      "name": "Moog Pluck",
+      "slug": "moog_pluck",
+      "pack": "In The Mix",
+      "wavetables": 2,
+      "file": "code/moog_pluck.js"
+    },
+    {
+      "name": "Strings Section",
+      "slug": "strings_section",
+      "pack": "In The Mix",
+      "wavetables": 2,
+      "file": "code/strings_section.js"
+    },
+    {
+      "name": "Complex Electro 1",
+      "slug": "complex_electro_1",
+      "pack": "Level 8",
+      "wavetables": 1,
+      "file": "code/complex_electro_1.js"
+    },
+    {
+      "name": "Crescendo Bells",
+      "slug": "crescendo_bells",
+      "pack": "Level 8",
+      "wavetables": 3,
+      "file": "code/crescendo_bells.js"
+    },
+    {
+      "name": "Damped Horn",
+      "slug": "damped_horn",
+      "pack": "Level 8",
+      "wavetables": 2,
+      "file": "code/damped_horn.js"
+    },
+    {
+      "name": "FM Mode",
+      "slug": "fm_mode",
+      "pack": "Level 8",
+      "wavetables": 1,
+      "file": "code/fm_mode.js"
+    },
+    {
+      "name": "Horror of Melbourne 1",
+      "slug": "horror_of_melbourne_1",
+      "pack": "Level 8",
+      "wavetables": 1,
+      "file": "code/horror_of_melbourne_1.js"
+    },
+    {
+      "name": "Smoker's Lounge",
+      "slug": "smoker_s_lounge",
+      "pack": "Level 8",
+      "wavetables": 0,
+      "file": "code/smoker_s_lounge.js"
+    },
+    {
+      "name": "Cursed Steps",
+      "slug": "cursed_steps",
+      "pack": "Mr Bill",
+      "wavetables": 3,
+      "file": "code/cursed_steps.js"
+    },
+    {
+      "name": "E4 One Note Metallophone",
+      "slug": "e4_one_note_metallophone",
+      "pack": "Mr Bill",
+      "wavetables": 3,
+      "file": "code/e4_one_note_metallophone.js"
+    },
+    {
+      "name": "Float Chords",
+      "slug": "float_chords",
+      "pack": "Mr Bill",
+      "wavetables": 2,
+      "file": "code/float_chords.js"
+    },
+    {
+      "name": "Honk Wub",
+      "slug": "honk_wub",
+      "pack": "Mr Bill",
+      "wavetables": 1,
+      "file": "code/honk_wub.js"
+    },
+    {
+      "name": "LORN Style Lead",
+      "slug": "lorn_style_lead",
+      "pack": "Mr Bill",
+      "wavetables": 1,
+      "file": "code/lorn_style_lead.js"
+    },
+    {
+      "name": "Real Squarepusher Hours",
+      "slug": "real_squarepusher_hours",
+      "pack": "Mr Bill",
+      "wavetables": 1,
+      "file": "code/real_squarepusher_hours.js"
+    },
+    {
+      "name": "Remedial Shikari",
+      "slug": "remedial_shikari",
+      "pack": "Mr Bill",
+      "wavetables": 2,
+      "file": "code/remedial_shikari.js"
+    },
+    {
+      "name": "Super Nice Pluck",
+      "slug": "super_nice_pluck",
+      "pack": "Mr Bill",
+      "wavetables": 1,
+      "file": "code/super_nice_pluck.js"
+    },
+    {
+      "name": "Dispersed Grit",
+      "slug": "dispersed_grit",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/dispersed_grit.js"
+    },
+    {
+      "name": "Drowning Machine",
+      "slug": "drowning_machine",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/drowning_machine.js"
+    },
+    {
+      "name": "Phaser Man",
+      "slug": "phaser_man",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/phaser_man.js"
+    },
+    {
+      "name": "Physical Tension",
+      "slug": "physical_tension",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/physical_tension.js"
+    },
+    {
+      "name": "Skew Resandal",
+      "slug": "skew_resandal",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/skew_resandal.js"
+    },
+    {
+      "name": "Super Pluck",
+      "slug": "super_pluck",
+      "pack": "Navi Retlav Studio",
+      "wavetables": 0,
+      "file": "code/super_pluck.js"
+    },
+    {
+      "name": "A happy ending of the world",
+      "slug": "a_happy_ending_of_the_world",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 1,
+      "file": "code/a_happy_ending_of_the_world.js"
+    },
+    {
+      "name": "Chorusy Keys",
+      "slug": "chorusy_keys",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 0,
+      "file": "code/chorusy_keys.js"
+    },
+    {
+      "name": "Fun Pulse",
+      "slug": "fun_pulse",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 0,
+      "file": "code/fun_pulse.js"
+    },
+    {
+      "name": "Moving Harmonics",
+      "slug": "moving_harmonics",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 2,
+      "file": "code/moving_harmonics.js"
+    },
+    {
+      "name": "Phaser Entropy ",
+      "slug": "phaser_entropy",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 0,
+      "file": "code/phaser_entropy.js"
+    },
+    {
+      "name": "corrupted_...+=boot-_",
+      "slug": "corrupted_boot-",
+      "pack": "Unsystematic Fragmentation",
+      "wavetables": 0,
+      "file": "code/corrupted_boot-.js"
+    },
+    {
+      "name": "A Night in Kalyan",
+      "slug": "a_night_in_kalyan",
+      "pack": "Yuli Yolo",
+      "wavetables": 0,
+      "file": "code/a_night_in_kalyan.js"
+    },
+    {
+      "name": "Abbysun",
+      "slug": "abbysun",
+      "pack": "Yuli Yolo",
+      "wavetables": 0,
+      "file": "code/abbysun.js"
+    },
+    {
+      "name": "DIY",
+      "slug": "diy",
+      "pack": "Yuli Yolo",
+      "wavetables": 0,
+      "file": "code/diy.js"
+    },
+    {
+      "name": "Destruction",
+      "slug": "destruction",
+      "pack": "Yuli Yolo",
+      "wavetables": 3,
+      "file": "code/destruction.js"
+    },
+    {
+      "name": "Easy Mallet",
+      "slug": "easy_mallet",
+      "pack": "Yuli Yolo",
+      "wavetables": 0,
+      "file": "code/easy_mallet.js"
+    },
+    {
+      "name": "Jupiter Bass",
+      "slug": "jupiter_bass",
+      "pack": "Yuli Yolo",
+      "wavetables": 2,
+      "file": "code/jupiter_bass.js"
+    },
+    {
+      "name": "Keystation",
+      "slug": "keystation",
+      "pack": "Yuli Yolo",
+      "wavetables": 2,
+      "file": "code/keystation.js"
+    },
+    {
+      "name": "Metal Head",
+      "slug": "metal_head",
+      "pack": "Yuli Yolo",
+      "wavetables": 2,
+      "file": "code/metal_head.js"
+    },
+    {
+      "name": "Salomon",
+      "slug": "salomon",
+      "pack": "Yuli Yolo",
+      "wavetables": 1,
+      "file": "code/salomon.js"
+    },
+    {
+      "name": "Synthetic Quartet",
+      "slug": "synthetic_quartet",
+      "pack": "Yuli Yolo",
+      "wavetables": 3,
+      "file": "code/synthetic_quartet.js"
+    },
+    {
+      "name": "Big Stomp",
+      "slug": "big_stomp",
+      "pack": "inktome",
+      "wavetables": 1,
+      "file": "code/big_stomp.js"
+    },
+    {
+      "name": "Digital roller",
+      "slug": "digital_roller",
+      "pack": "inktome",
+      "wavetables": 2,
+      "file": "code/digital_roller.js"
+    },
+    {
+      "name": "Piano from the yard sale",
+      "slug": "piano_from_the_yard_sale",
+      "pack": "inktome",
+      "wavetables": 2,
+      "file": "code/piano_from_the_yard_sale.js"
+    }
+  ],
+  "errors": []
+}

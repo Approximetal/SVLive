@@ -1,0 +1,468 @@
+{
+  "_base": "/vital-wavetables/",
+  "a_happy_ending_of_the_world_osc1": [
+    "a_happy_ending_of_the_world_osc1.wav"
+  ],
+  "a_happy_ending_of_the_world_osc2": [
+    "a_happy_ending_of_the_world_osc2.wav"
+  ],
+  "a_happy_ending_of_the_world_osc3": [
+    "a_happy_ending_of_the_world_osc3.wav"
+  ],
+  "a_night_in_kalyan_osc1": [
+    "a_night_in_kalyan_osc1.wav"
+  ],
+  "a_night_in_kalyan_osc2": [
+    "a_night_in_kalyan_osc2.wav"
+  ],
+  "abbysun_osc2": [
+    "abbysun_osc2.wav"
+  ],
+  "abbysun_osc3": [
+    "abbysun_osc3.wav"
+  ],
+  "ah_eh_ee_oh_osc1": [
+    "ah_eh_ee_oh_osc1.wav"
+  ],
+  "analog_pad_osc1": [
+    "analog_pad_osc1.wav"
+  ],
+  "analog_pad_osc2": [
+    "analog_pad_osc2.wav"
+  ],
+  "banana_wob_osc1": [
+    "banana_wob_osc1.wav"
+  ],
+  "banana_wob_osc2": [
+    "banana_wob_osc2.wav"
+  ],
+  "big_stomp_osc1": [
+    "big_stomp_osc1.wav"
+  ],
+  "big_stomp_osc2": [
+    "big_stomp_osc2.wav"
+  ],
+  "boot_scre3n_osc1": [
+    "boot_scre3n_osc1.wav"
+  ],
+  "boot_scre3n_osc2": [
+    "boot_scre3n_osc2.wav"
+  ],
+  "boot_scre3n_osc3": [
+    "boot_scre3n_osc3.wav"
+  ],
+  "ceramic_osc1": [
+    "ceramic_osc1.wav"
+  ],
+  "chorusy_keys_osc1": [
+    "chorusy_keys_osc1.wav"
+  ],
+  "chorusy_keys_osc2": [
+    "chorusy_keys_osc2.wav"
+  ],
+  "cinema_bells_osc1": [
+    "cinema_bells_osc1.wav"
+  ],
+  "cinema_bells_osc2": [
+    "cinema_bells_osc2.wav"
+  ],
+  "cinema_bells_osc3": [
+    "cinema_bells_osc3.wav"
+  ],
+  "complex_electro_1_osc1": [
+    "complex_electro_1_osc1.wav"
+  ],
+  "complex_electro_1_osc2": [
+    "complex_electro_1_osc2.wav"
+  ],
+  "complex_electro_1_osc3": [
+    "complex_electro_1_osc3.wav"
+  ],
+  "corrupted_boot_osc1": [
+    "corrupted_boot_osc1.wav"
+  ],
+  "crescendo_bells_osc1": [
+    "crescendo_bells_osc1.wav"
+  ],
+  "crescendo_bells_osc2": [
+    "crescendo_bells_osc2.wav"
+  ],
+  "crescendo_bells_osc3": [
+    "crescendo_bells_osc3.wav"
+  ],
+  "cursed_steps_osc1": [
+    "cursed_steps_osc1.wav"
+  ],
+  "cursed_steps_osc2": [
+    "cursed_steps_osc2.wav"
+  ],
+  "cursed_steps_osc3": [
+    "cursed_steps_osc3.wav"
+  ],
+  "damped_horn_osc1": [
+    "damped_horn_osc1.wav"
+  ],
+  "damped_horn_osc2": [
+    "damped_horn_osc2.wav"
+  ],
+  "damped_horn_osc3": [
+    "damped_horn_osc3.wav"
+  ],
+  "destruction_osc1": [
+    "destruction_osc1.wav"
+  ],
+  "destruction_osc2": [
+    "destruction_osc2.wav"
+  ],
+  "destruction_osc3": [
+    "destruction_osc3.wav"
+  ],
+  "digestive_trauma_osc1": [
+    "digestive_trauma_osc1.wav"
+  ],
+  "digestive_trauma_osc3": [
+    "digestive_trauma_osc3.wav"
+  ],
+  "digital_roller_osc1": [
+    "digital_roller_osc1.wav"
+  ],
+  "digital_roller_osc2": [
+    "digital_roller_osc2.wav"
+  ],
+  "dispersed_grit_osc1": [
+    "dispersed_grit_osc1.wav"
+  ],
+  "dispersed_grit_osc2": [
+    "dispersed_grit_osc2.wav"
+  ],
+  "disrupt_osc1": [
+    "disrupt_osc1.wav"
+  ],
+  "disrupt_osc2": [
+    "disrupt_osc2.wav"
+  ],
+  "disrupt_osc3": [
+    "disrupt_osc3.wav"
+  ],
+  "distant_majestic_lead_osc1": [
+    "distant_majestic_lead_osc1.wav"
+  ],
+  "diy_osc1": [
+    "diy_osc1.wav"
+  ],
+  "drowning_machine_osc1": [
+    "drowning_machine_osc1.wav"
+  ],
+  "drowning_machine_osc2": [
+    "drowning_machine_osc2.wav"
+  ],
+  "drowning_machine_osc3": [
+    "drowning_machine_osc3.wav"
+  ],
+  "e4_one_note_metallophone_osc1": [
+    "e4_one_note_metallophone_osc1.wav"
+  ],
+  "e4_one_note_metallophone_osc2": [
+    "e4_one_note_metallophone_osc2.wav"
+  ],
+  "e4_one_note_metallophone_osc3": [
+    "e4_one_note_metallophone_osc3.wav"
+  ],
+  "feeder_osc1": [
+    "feeder_osc1.wav"
+  ],
+  "feeder_osc2": [
+    "feeder_osc2.wav"
+  ],
+  "feeder_osc3": [
+    "feeder_osc3.wav"
+  ],
+  "fleet_osc1": [
+    "fleet_osc1.wav"
+  ],
+  "fleet_osc2": [
+    "fleet_osc2.wav"
+  ],
+  "fleet_osc3": [
+    "fleet_osc3.wav"
+  ],
+  "float_chords_osc1": [
+    "float_chords_osc1.wav"
+  ],
+  "float_chords_osc2": [
+    "float_chords_osc2.wav"
+  ],
+  "float_chords_osc3": [
+    "float_chords_osc3.wav"
+  ],
+  "fm_drum_circle_osc1": [
+    "fm_drum_circle_osc1.wav"
+  ],
+  "fm_mode_osc1": [
+    "fm_mode_osc1.wav"
+  ],
+  "fun_pulse_osc1": [
+    "fun_pulse_osc1.wav"
+  ],
+  "gorgled_osc1": [
+    "gorgled_osc1.wav"
+  ],
+  "gorgled_osc2": [
+    "gorgled_osc2.wav"
+  ],
+  "gorgled_osc3": [
+    "gorgled_osc3.wav"
+  ],
+  "growl_bass_sidechain_osc1": [
+    "growl_bass_sidechain_osc1.wav"
+  ],
+  "growl_bass_sidechain_osc2": [
+    "growl_bass_sidechain_osc2.wav"
+  ],
+  "honk_wub_osc1": [
+    "honk_wub_osc1.wav"
+  ],
+  "honk_wub_osc2": [
+    "honk_wub_osc2.wav"
+  ],
+  "honk_wub_osc3": [
+    "honk_wub_osc3.wav"
+  ],
+  "horror_of_melbourne_1_osc1": [
+    "horror_of_melbourne_1_osc1.wav"
+  ],
+  "horror_of_melbourne_1_osc2": [
+    "horror_of_melbourne_1_osc2.wav"
+  ],
+  "jupiter_bass_osc2": [
+    "jupiter_bass_osc2.wav"
+  ],
+  "jupiter_bass_osc3": [
+    "jupiter_bass_osc3.wav"
+  ],
+  "keystation_osc1": [
+    "keystation_osc1.wav"
+  ],
+  "keystation_osc2": [
+    "keystation_osc2.wav"
+  ],
+  "kick_drum_1_osc1": [
+    "kick_drum_1_osc1.wav"
+  ],
+  "lorn_style_lead_osc1": [
+    "lorn_style_lead_osc1.wav"
+  ],
+  "memory_leak_osc1": [
+    "memory_leak_osc1.wav"
+  ],
+  "memory_leak_osc2": [
+    "memory_leak_osc2.wav"
+  ],
+  "memory_leak_osc3": [
+    "memory_leak_osc3.wav"
+  ],
+  "metal_head_osc2": [
+    "metal_head_osc2.wav"
+  ],
+  "metal_head_osc3": [
+    "metal_head_osc3.wav"
+  ],
+  "moog_pluck_osc1": [
+    "moog_pluck_osc1.wav"
+  ],
+  "moog_pluck_osc2": [
+    "moog_pluck_osc2.wav"
+  ],
+  "moving_harmonics_osc1": [
+    "moving_harmonics_osc1.wav"
+  ],
+  "moving_harmonics_osc2": [
+    "moving_harmonics_osc2.wav"
+  ],
+  "moving_harmonics_osc3": [
+    "moving_harmonics_osc3.wav"
+  ],
+  "oolacile_evil_dubstep_bass_osc1": [
+    "oolacile_evil_dubstep_bass_osc1.wav"
+  ],
+  "oolacile_evil_dubstep_bass_osc2": [
+    "oolacile_evil_dubstep_bass_osc2.wav"
+  ],
+  "oolacile_evil_dubstep_bass_osc3": [
+    "oolacile_evil_dubstep_bass_osc3.wav"
+  ],
+  "phaser_entropy_osc1": [
+    "phaser_entropy_osc1.wav"
+  ],
+  "phaser_man_osc1": [
+    "phaser_man_osc1.wav"
+  ],
+  "physical_tension_osc1": [
+    "physical_tension_osc1.wav"
+  ],
+  "piano_from_the_yard_sale_osc1": [
+    "piano_from_the_yard_sale_osc1.wav"
+  ],
+  "piano_from_the_yard_sale_osc3": [
+    "piano_from_the_yard_sale_osc3.wav"
+  ],
+  "railgun_osc1": [
+    "railgun_osc1.wav"
+  ],
+  "railgun_osc2": [
+    "railgun_osc2.wav"
+  ],
+  "random_amp_growl_osc1": [
+    "random_amp_growl_osc1.wav"
+  ],
+  "random_amp_growl_osc2": [
+    "random_amp_growl_osc2.wav"
+  ],
+  "random_amp_growl_osc3": [
+    "random_amp_growl_osc3.wav"
+  ],
+  "real_squarepusher_hours_osc1": [
+    "real_squarepusher_hours_osc1.wav"
+  ],
+  "real_squarepusher_hours_osc2": [
+    "real_squarepusher_hours_osc2.wav"
+  ],
+  "real_squarepusher_hours_osc3": [
+    "real_squarepusher_hours_osc3.wav"
+  ],
+  "remedial_shikari_osc1": [
+    "remedial_shikari_osc1.wav"
+  ],
+  "remedial_shikari_osc2": [
+    "remedial_shikari_osc2.wav"
+  ],
+  "salomon_osc1": [
+    "salomon_osc1.wav"
+  ],
+  "salomon_osc2": [
+    "salomon_osc2.wav"
+  ],
+  "salomon_osc3": [
+    "salomon_osc3.wav"
+  ],
+  "satellites_osc1": [
+    "satellites_osc1.wav"
+  ],
+  "satellites_osc2": [
+    "satellites_osc2.wav"
+  ],
+  "satellites_osc3": [
+    "satellites_osc3.wav"
+  ],
+  "shepard_tone_template_osc1": [
+    "shepard_tone_template_osc1.wav"
+  ],
+  "simple_weoum_osc1": [
+    "simple_weoum_osc1.wav"
+  ],
+  "simple_weoum_osc2": [
+    "simple_weoum_osc2.wav"
+  ],
+  "simple_weoum_osc3": [
+    "simple_weoum_osc3.wav"
+  ],
+  "skew_resandal_osc1": [
+    "skew_resandal_osc1.wav"
+  ],
+  "smokers_lounge_osc1": [
+    "smokers_lounge_osc1.wav"
+  ],
+  "smokers_lounge_osc2": [
+    "smokers_lounge_osc2.wav"
+  ],
+  "smokers_lounge_osc3": [
+    "smokers_lounge_osc3.wav"
+  ],
+  "snowcrash_osc1": [
+    "snowcrash_osc1.wav"
+  ],
+  "snowcrash_osc2": [
+    "snowcrash_osc2.wav"
+  ],
+  "snowcrash_osc3": [
+    "snowcrash_osc3.wav"
+  ],
+  "space_station_osc1": [
+    "space_station_osc1.wav"
+  ],
+  "space_station_osc2": [
+    "space_station_osc2.wav"
+  ],
+  "space_station_osc3": [
+    "space_station_osc3.wav"
+  ],
+  "special_glitch_thing_osc1": [
+    "special_glitch_thing_osc1.wav"
+  ],
+  "squish_clicker_osc1": [
+    "squish_clicker_osc1.wav"
+  ],
+  "staggered_phrases_osc1": [
+    "staggered_phrases_osc1.wav"
+  ],
+  "staggered_phrases_osc3": [
+    "staggered_phrases_osc3.wav"
+  ],
+  "strings_section_osc1": [
+    "strings_section_osc1.wav"
+  ],
+  "strings_section_osc2": [
+    "strings_section_osc2.wav"
+  ],
+  "super_nice_pluck_osc2": [
+    "super_nice_pluck_osc2.wav"
+  ],
+  "super_pluck_osc1": [
+    "super_pluck_osc1.wav"
+  ],
+  "swiss_army_knife_osc1": [
+    "swiss_army_knife_osc1.wav"
+  ],
+  "swiss_army_knife_osc2": [
+    "swiss_army_knife_osc2.wav"
+  ],
+  "synthetic_quartet_osc1": [
+    "synthetic_quartet_osc1.wav"
+  ],
+  "synthetic_quartet_osc2": [
+    "synthetic_quartet_osc2.wav"
+  ],
+  "synthetic_quartet_osc3": [
+    "synthetic_quartet_osc3.wav"
+  ],
+  "text_to_wavetable_template_osc1": [
+    "text_to_wavetable_template_osc1.wav"
+  ],
+  "thumpus_osc1": [
+    "thumpus_osc1.wav"
+  ],
+  "thumpus_osc2": [
+    "thumpus_osc2.wav"
+  ],
+  "thumpus_osc3": [
+    "thumpus_osc3.wav"
+  ],
+  "thunk_osc1": [
+    "thunk_osc1.wav"
+  ],
+  "touch_tone_osc1": [
+    "touch_tone_osc1.wav"
+  ],
+  "touch_tone_osc2": [
+    "touch_tone_osc2.wav"
+  ],
+  "vlt_future_gun_osc1": [
+    "vlt_future_gun_osc1.wav"
+  ],
+  "vlt_future_gun_osc2": [
+    "vlt_future_gun_osc2.wav"
+  ],
+  "vlt_future_gun_osc3": [
+    "vlt_future_gun_osc3.wav"
+  ]
+}

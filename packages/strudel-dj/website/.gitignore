@@ -1,0 +1,27 @@
+.astro
+# build output
+dist/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# environment variables
+.env
+.env.production
+
+# 本地 AI 代理配置（复制 anthropic.provider.example.json 为 anthropic.provider.json 后填写）
+public/anthropic.provider.json
+
+# macOS-specific files
+.DS_Store
+
+public/tree-sitter.wasm
+public/tree-sitter-haskell.wasm
+.vercel

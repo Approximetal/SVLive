@@ -1,0 +1,884 @@
+[
+  {
+    "slug": "a_happy_ending_of_the_world",
+    "name": "A happy ending of the world",
+    "category": "pad",
+    "wavetables": [
+      "a_happy_ending_of_the_world_osc3"
+    ],
+    "unison": 4,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "a_night_in_kalyan",
+    "name": "A Night in Kalyan",
+    "category": "other",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "abbysun",
+    "name": "Abbysun",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "ah_eh_ee_oh",
+    "name": "Ah Eh Ee Oh",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "analog_pad",
+    "name": "Analog Pad",
+    "category": "pad",
+    "wavetables": [
+      "analog_pad_osc2"
+    ],
+    "unison": 7,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "banana_wob",
+    "name": "Banana Wob",
+    "category": "bass",
+    "wavetables": [
+      "banana_wob_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "big_stomp",
+    "name": "Big Stomp",
+    "category": "bass",
+    "wavetables": [
+      "big_stomp_osc2"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "boot_scre3n",
+    "name": "Boot Scre3n",
+    "category": "lead",
+    "wavetables": [
+      "boot_scre3n_osc2",
+      "boot_scre3n_osc3"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "ceramic",
+    "name": "Ceramic",
+    "category": "pluck",
+    "wavetables": [
+      "ceramic_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "chorusy_keys",
+    "name": "Chorusy Keys",
+    "category": "keys",
+    "wavetables": [],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "cinema_bells",
+    "name": "Cinema Bells",
+    "category": "pluck",
+    "wavetables": [
+      "cinema_bells_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "complex_electro_1",
+    "name": "Complex Electro 1",
+    "category": "other",
+    "wavetables": [
+      "complex_electro_1_osc2"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "corrupted_boot-",
+    "name": "corrupted_...+=boot-_",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 16,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "crescendo_bells",
+    "name": "Crescendo Bells",
+    "category": "pluck",
+    "wavetables": [
+      "crescendo_bells_osc1",
+      "crescendo_bells_osc2",
+      "crescendo_bells_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "cursed_steps",
+    "name": "Cursed Steps",
+    "category": "bass",
+    "wavetables": [
+      "cursed_steps_osc1",
+      "cursed_steps_osc2",
+      "cursed_steps_osc3"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "damped_horn",
+    "name": "Damped Horn",
+    "category": "lead",
+    "wavetables": [
+      "damped_horn_osc2",
+      "damped_horn_osc3"
+    ],
+    "unison": 8,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "destruction",
+    "name": "Destruction",
+    "category": "pad",
+    "wavetables": [
+      "destruction_osc1",
+      "destruction_osc2",
+      "destruction_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "digestive_trauma",
+    "name": "Digestive Trauma",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "digital_roller",
+    "name": "Digital roller",
+    "category": "lead",
+    "wavetables": [
+      "digital_roller_osc1",
+      "digital_roller_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "dispersed_grit",
+    "name": "Dispersed Grit",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "disrupt",
+    "name": "Disrupt",
+    "category": "lead",
+    "wavetables": [
+      "disrupt_osc1",
+      "disrupt_osc2"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "distant_majestic_lead",
+    "name": "Distant Majestic Lead",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 8,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "diy",
+    "name": "DIY",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 8,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "drowning_machine",
+    "name": "Drowning Machine",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "e4_one_note_metallophone",
+    "name": "E4 One Note Metallophone",
+    "category": "pluck",
+    "wavetables": [
+      "e4_one_note_metallophone_osc1",
+      "e4_one_note_metallophone_osc2",
+      "e4_one_note_metallophone_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "easy_mallet",
+    "name": "Easy Mallet",
+    "category": "pluck",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "feeder",
+    "name": "Feeder",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "fleet",
+    "name": "Fleet",
+    "category": "pad",
+    "wavetables": [
+      "fleet_osc2",
+      "fleet_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "float_chords",
+    "name": "Float Chords",
+    "category": "pad",
+    "wavetables": [
+      "float_chords_osc2",
+      "float_chords_osc3"
+    ],
+    "unison": 5,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "fm_drum_circle",
+    "name": "FM Drum Circle",
+    "category": "other",
+    "wavetables": [
+      "fm_drum_circle_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "fm_mode",
+    "name": "FM Mode",
+    "category": "bass",
+    "wavetables": [
+      "fm_mode_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "fun_pulse",
+    "name": "Fun Pulse",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 5,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "gorgled",
+    "name": "Gorgled",
+    "category": "lead",
+    "wavetables": [
+      "gorgled_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "growl_bass_sidechain",
+    "name": "Growl Bass Sidechain",
+    "category": "bass",
+    "wavetables": [
+      "growl_bass_sidechain_osc2"
+    ],
+    "unison": 12,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "honk_wub",
+    "name": "Honk Wub",
+    "category": "bass",
+    "wavetables": [
+      "honk_wub_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "horror_of_melbourne_1",
+    "name": "Horror of Melbourne 1",
+    "category": "other",
+    "wavetables": [
+      "horror_of_melbourne_1_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "jupiter_bass",
+    "name": "Jupiter Bass",
+    "category": "bass",
+    "wavetables": [
+      "jupiter_bass_osc2",
+      "jupiter_bass_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "keystation",
+    "name": "Keystation",
+    "category": "keys",
+    "wavetables": [
+      "keystation_osc1",
+      "keystation_osc2"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "kick_drum_1",
+    "name": "Kick Drum 1",
+    "category": "other",
+    "wavetables": [
+      "kick_drum_1_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "lorn_style_lead",
+    "name": "LORN Style Lead",
+    "category": "lead",
+    "wavetables": [
+      "lorn_style_lead_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "memory_leak",
+    "name": "Memory Leak",
+    "category": "lead",
+    "wavetables": [
+      "memory_leak_osc1",
+      "memory_leak_osc2",
+      "memory_leak_osc3"
+    ],
+    "unison": 2,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "metal_head",
+    "name": "Metal Head",
+    "category": "pad",
+    "wavetables": [
+      "metal_head_osc2",
+      "metal_head_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "moog_pluck",
+    "name": "Moog Pluck",
+    "category": "pluck",
+    "wavetables": [
+      "moog_pluck_osc1",
+      "moog_pluck_osc2"
+    ],
+    "unison": 5,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "moving_harmonics",
+    "name": "Moving Harmonics",
+    "category": "pad",
+    "wavetables": [
+      "moving_harmonics_osc2",
+      "moving_harmonics_osc3"
+    ],
+    "unison": 6,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "oolacile_evil_dubstep_bass",
+    "name": "Oolacile Evil Dubstep Bass",
+    "category": "bass",
+    "wavetables": [],
+    "unison": 4,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "phaser_entropy",
+    "name": "Phaser Entropy ",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 7,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "phaser_man",
+    "name": "Phaser Man",
+    "category": "bass",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "physical_tension",
+    "name": "Physical Tension",
+    "category": "other",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "piano_from_the_yard_sale",
+    "name": "Piano from the yard sale",
+    "category": "pluck",
+    "wavetables": [
+      "piano_from_the_yard_sale_osc1",
+      "piano_from_the_yard_sale_osc3"
+    ],
+    "unison": 2,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "plucked_string",
+    "name": "Plucked String",
+    "category": "pad",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "railgun",
+    "name": "Railgun",
+    "category": "other",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "random_amp_growl",
+    "name": "Random Amp Growl",
+    "category": "bass",
+    "wavetables": [
+      "random_amp_growl_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "real_squarepusher_hours",
+    "name": "Real Squarepusher Hours",
+    "category": "lead",
+    "wavetables": [
+      "real_squarepusher_hours_osc3"
+    ],
+    "unison": 3,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "remedial_shikari",
+    "name": "Remedial Shikari",
+    "category": "lead",
+    "wavetables": [
+      "remedial_shikari_osc1",
+      "remedial_shikari_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "salomon",
+    "name": "Salomon",
+    "category": "pad",
+    "wavetables": [
+      "salomon_osc2"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "satellites",
+    "name": "Satellites",
+    "category": "pad",
+    "wavetables": [
+      "satellites_osc1",
+      "satellites_osc2"
+    ],
+    "unison": 4,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "shepard_tone_template",
+    "name": "Shepard Tone Template",
+    "category": "pad",
+    "wavetables": [
+      "shepard_tone_template_osc1"
+    ],
+    "unison": 10,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "simple_weoum",
+    "name": "Simple Weoum",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "skew_resandal",
+    "name": "Skew Resandal",
+    "category": "bass",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "smoker_s_lounge",
+    "name": "Smoker's Lounge",
+    "category": "keys",
+    "wavetables": [],
+    "unison": 8,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": true
+  },
+  {
+    "slug": "snowcrash",
+    "name": "Snowcrash",
+    "category": "pad",
+    "wavetables": [
+      "snowcrash_osc1",
+      "snowcrash_osc2",
+      "snowcrash_osc3"
+    ],
+    "unison": 16,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "space_station",
+    "name": "Space Station",
+    "category": "pad",
+    "wavetables": [
+      "space_station_osc1",
+      "space_station_osc2",
+      "space_station_osc3"
+    ],
+    "unison": 7,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "special_glitch_thing",
+    "name": "Special Glitch Thing",
+    "category": "other",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "squish_clicker",
+    "name": "Squish Clicker",
+    "category": "lead",
+    "wavetables": [
+      "squish_clicker_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "staggered_phrases",
+    "name": "Staggered Phrases",
+    "category": "pad",
+    "wavetables": [
+      "staggered_phrases_osc3"
+    ],
+    "unison": 14,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "strings_section",
+    "name": "Strings Section",
+    "category": "pad",
+    "wavetables": [
+      "strings_section_osc1",
+      "strings_section_osc2"
+    ],
+    "unison": 7,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": false
+  },
+  {
+    "slug": "super_nice_pluck",
+    "name": "Super Nice Pluck",
+    "category": "pluck",
+    "wavetables": [
+      "super_nice_pluck_osc2"
+    ],
+    "unison": 13,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "super_pluck",
+    "name": "Super Pluck",
+    "category": "pluck",
+    "wavetables": [],
+    "unison": 7,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "swiss_army_knife",
+    "name": "Swiss Army Knife",
+    "category": "bass",
+    "wavetables": [
+      "swiss_army_knife_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "synthetic_quartet",
+    "name": "Synthetic Quartet",
+    "category": "pad",
+    "wavetables": [
+      "synthetic_quartet_osc1",
+      "synthetic_quartet_osc2",
+      "synthetic_quartet_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": true,
+    "hasRoom": true
+  },
+  {
+    "slug": "text_to_wavetable_template",
+    "name": "Text To Wavetable Template",
+    "category": "other",
+    "wavetables": [],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "thumpus",
+    "name": "Thumpus",
+    "category": "lead",
+    "wavetables": [],
+    "unison": 6,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "thunk",
+    "name": "THUNK",
+    "category": "bass",
+    "wavetables": [
+      "thunk_osc1"
+    ],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "touch_tone",
+    "name": "Touch Tone",
+    "category": "pluck",
+    "wavetables": [
+      "touch_tone_osc1",
+      "touch_tone_osc2"
+    ],
+    "unison": 1,
+    "hasWarp": false,
+    "hasDelay": false,
+    "hasRoom": false
+  },
+  {
+    "slug": "vlt_future_gun",
+    "name": "VLT Future Gun",
+    "category": "lead",
+    "wavetables": [
+      "vlt_future_gun_osc1",
+      "vlt_future_gun_osc2",
+      "vlt_future_gun_osc3"
+    ],
+    "unison": 1,
+    "hasWarp": true,
+    "hasDelay": false,
+    "hasRoom": false
+  }
+]

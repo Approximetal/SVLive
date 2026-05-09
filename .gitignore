@@ -1,0 +1,30 @@
+# === Node ===
+node_modules/
+.pnpm/
+.pnpm-store/
+dist/
+*.tsbuildinfo
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# === Vital Bridge ===
+packages/vital-bridge/render_cache/
+packages/vital-bridge/test_output/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === Env ===
+.env
+.env.local
+README.zh.md
