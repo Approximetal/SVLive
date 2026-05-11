@@ -10,6 +10,7 @@ import { CheckIcon, XMarkIcon, PlayIcon, StopIcon, SparklesIcon, ClockIcon, Arro
 import { fixInvalidSounds, findInvalidSounds, GENRE_SOUND_MAP } from '../../ai/sounds.js';
 import { getExampleForGenre, getAdvancedExampleForGenre } from '../../ai/templates.js';
 import { analyzeIntent } from '../../ai/intentAnalyzer.js';
+import { translatePrompt, matchVitalPresets, buildPresetGuidance } from '../../ai/musicTranslator.js';
 import { buildEnhancedPrompt, buildModifyPrompt } from '../../ai/promptBuilder.js';
 import { parseLayers, detectCodeGenre, detectCodeKey, detectCodeBPM } from '../../ai/codeParser.js';
 import { generateAlternatives, generateRhythmVariants, generateHarmonyVariants, applyAlternative } from '../../ai/alternatives.js';
@@ -728,13 +729,43 @@ export function AITab({ context }) {
 
       const currentCode = getCurrentCode();
 
-      // === Module A: Intent Analysis ===
-      const intent = analyzeIntent(prompt || '');
-      log(`Intent: ${intent.genre || 'unknown'} | ${intent.bpm || '?'}bpm | ${intent.mood || '?'}`);
+      // === Module A: Intent Analysis (LLM-based translation + preset matching) ===
+      let intent, presetGuidance = '';
+      try {
+        log('Translating prompt to music terms via LLM...');
+        setProcessingHint('Analyzing musical intent...');
+        const terms = await translatePrompt(client, prompt || '', resolvedModel);
+        // BPM defaults per genre (same as intentAnalyzer's DEFAULT_BPMS)
+        const genreBPM = { house:124, techno:133, trance:140, ambient:70, jazz:95, dnb:174, hiphop:90, trap:145, lofi:78, dubstep:140, reggae:80, funk:110, garage:134, classical:80, hyperpop:160, synthwave:100, latin:110 };
+        intent = {
+          genre: terms.genre,
+          bpm: terms.bpm || genreBPM[terms.genre] || 120,
+          key: terms.key || 'C:minor',
+          mood: terms.mood?.[0] || 'energetic',
+          complexity: 'medium',
+        };
+        log(`Intent: ${terms.genre} | ${terms.bpm || '?'}bpm | ${(terms.mood || []).join(', ')} | ${terms.description}`);
+
+        // === Module A2: Preset Matching ===
+        setProcessingHint('Finding matching sounds...');
+        const matchResult = await matchVitalPresets(terms);
+        const instrumentCount = Object.keys(matchResult.presets).length;
+        if (instrumentCount > 0) {
+          log(`Matched presets for ${instrumentCount} instrument types (${matchResult.matchedSoundTags.join(', ') || 'no style tags'})`);
+          presetGuidance = buildPresetGuidance(matchResult);
+        } else {
+          log('No Vital presets matched — model will choose sounds freely');
+        }
+      } catch (transErr) {
+        // Fallback to regex-based analyzer
+        log(`LLM translation failed: ${transErr.message}, falling back to regex analyzer`, 'warn');
+        intent = analyzeIntent(prompt || '');
+        log(`Intent (fallback): ${intent.genre || 'unknown'} | ${intent.bpm || '?'}bpm | ${intent.mood || '?'}`);
+      }
 
       let userMessage = prompt;
       // === Module B: Dynamic Prompt Building ===
-      let systemPrompt = buildEnhancedPrompt(intent, prompt || '', SYSTEM_PROMPT);
+      let systemPrompt = buildEnhancedPrompt(intent, prompt || '', SYSTEM_PROMPT, presetGuidance);
       let schema = {
         type: "object",
         properties: {
@@ -753,8 +784,8 @@ export function AITab({ context }) {
         userMessage = `Here is the current strudel code:\n\n\`\`\`javascript\n${currentCode}\n\`\`\`\n\nRequest: ${request}\n\nIf the code is empty or the request cannot be fulfilled with patches, please explain why in the reasoning and return an empty patches array.`;
         // === Module B: Enhanced modify/DJ prompts ===
         systemPrompt = isAutoDJ
-          ? DJ_SYSTEM_PROMPT
-          : buildModifyPrompt(intent, currentCode, MODIFY_SYSTEM_PROMPT);
+          ? DJ_SYSTEM_PROMPT + presetGuidance
+          : buildModifyPrompt(intent, currentCode, MODIFY_SYSTEM_PROMPT, presetGuidance);
         schema = modifySchema;
       }
 

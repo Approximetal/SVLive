@@ -11,16 +11,16 @@ import { getExampleForGenre, getAdvancedExampleForGenre } from './templates.js';
 /**
  * Build an enhanced system prompt based on analyzed intent
  */
-export function buildEnhancedPrompt(intent, userMessage, baseSystemPrompt) {
+export function buildEnhancedPrompt(intent, userMessage, baseSystemPrompt, presetGuidance = '') {
   const genreSounds = GENRE_SOUND_MAP[intent.genre] || GENRE_SOUND_MAP.house;
-  const exampleCode = intent.complexity === 'complex' 
+  const exampleCode = intent.complexity === 'complex'
     ? getAdvancedExampleForGenre(intent.genre)
     : getExampleForGenre(intent.genre);
-  
+
   const compositionMethodology = getCompositionMethodology(intent);
   const soundGuidance = getSoundGuidance(intent, genreSounds);
   const mixingGuidance = getMixingGuidance(intent);
-  
+
   return `${baseSystemPrompt}
 
 ## ═══════════════════════════════════════════════
@@ -35,6 +35,8 @@ export function buildEnhancedPrompt(intent, userMessage, baseSystemPrompt) {
 - **Complexity**: ${intent.complexity}
 
 ${soundGuidance}
+
+${presetGuidance}
 
 ${compositionMethodology}
 
@@ -51,10 +53,10 @@ ${exampleCode}
 
 ## Final Checklist Before Output
 1. ✅ Used \`setCpm(${intent.bpm}/4)\` for tempo
-2. ✅ All sounds are from the VERIFIED list above  
+2. ✅ All sounds are from the VERIFIED list above
 3. ✅ Used \`.scale("${intent.key}")\` for melodic content
 4. ✅ Patterns are dense enough for the tempo (e.g., \`s("bd*4")\` not \`s("bd")\`)
-5. ✅ Code is wrapped in a single \`stack(...)\` 
+5. ✅ Code is wrapped in a single \`stack(...)\`
 6. ✅ Each layer has a comment explaining its role
 7. ✅ At least one \`slider()\` for live performance control
 `;
@@ -183,13 +185,15 @@ function getMixingGuidance(intent) {
 /**
  * Build a concise prompt for modify mode (no need for full templates)
  */
-export function buildModifyPrompt(intent, currentCode, baseModifyPrompt) {
+export function buildModifyPrompt(intent, currentCode, baseModifyPrompt, presetGuidance = '') {
   return `${baseModifyPrompt}
 
 ## Current Context
 - Detected genre: ${intent.genre}
 - Current BPM: ${intent.bpm}
 - Current key: ${intent.key}
+
+${presetGuidance}
 
 ## Valid Sounds for Replacements
 Bass: ${(GENRE_SOUND_MAP[intent.genre]?.bass || ['gm_synth_bass_1']).join(', ')}
