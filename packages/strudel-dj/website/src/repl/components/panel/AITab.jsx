@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Anthropic from '@anthropic-ai/sdk';
-import { evaluate, State, TimeSpan, isPattern } from '@strudel/core';
+import { evaluate, State, TimeSpan, isPattern, logger } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
 import { useSettings } from '../../../settings.mjs';
 import cx from '@src/cx.mjs';
@@ -592,6 +592,39 @@ export function AITab({ context }) {
   const [ccOutput, setCcOutput] = useState('');
   const BRIDGE_URL = 'http://localhost:8765';
 
+  // === Console logging helper — outputs to both browser console and Strudel Console tab ===
+  const log = useCallback((message, type = '') => {
+    const prefix = '[AI]';
+    console.info(`${prefix} ${message}`);
+    try {
+      logger.dispatchEvent(new CustomEvent(logger.key, {
+        detail: { message: `${prefix} ${message}`, type: type || undefined, data: {} },
+      }));
+    } catch (_) { /* ignore */ }
+  }, []);
+
+  // === Elapsed time counter ===
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
+  const elapsedSecRef = useRef(0);  // ref for stable access in closures
+
+  const startTimer = useCallback(() => {
+    setElapsed(0);
+    elapsedSecRef.current = 0;
+    const start = Date.now();
+    timerRef.current = setInterval(() => {
+      const sec = Math.round((Date.now() - start) / 1000);
+      elapsedSecRef.current = sec;
+      setElapsed(sec);
+    }, 1000);
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  useEffect(() => () => stopTimer(), [stopTimer]);
+
   const runClaudeCode = async () => {
     if (!prompt.trim()) {
       setError('Please enter a prompt');
@@ -656,8 +689,10 @@ export function AITab({ context }) {
     }
 
     setIsLoading(true);
-    setProcessingHint('正在请求模型…');
-    console.info('[Strudel AI] 开始请求', { mode, isAutoDJ, model: (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL });
+    setProcessingHint('Connecting...');
+    startTimer();
+    const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
+    log(`Starting ${mode} request → ${resolvedModel} @ ${baseURL || 'api.anthropic.com'}`);
     setError(null);
     if (!isAutoDJ) {
       setRationale(null);
@@ -666,12 +701,13 @@ export function AITab({ context }) {
 
     try {
       const client = createAnthropicClient(apiKey, baseURL, authStylePref);
+      log('Client created, analyzing intent...');
 
       const currentCode = getCurrentCode();
 
       // === Module A: Intent Analysis ===
       const intent = analyzeIntent(prompt || '');
-      console.info('[Strudel AI] Intent analysis:', intent);
+      log(`Intent: ${intent.genre || 'unknown'} | ${intent.bpm || '?'}bpm | ${intent.mood || '?'}`);
 
       let userMessage = prompt;
       // === Module B: Dynamic Prompt Building ===
@@ -711,6 +747,10 @@ export function AITab({ context }) {
 
       while (retries < maxRetries) {
         const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
+        const attemptMsg = retries > 0 ? ` (retry ${retries}/${maxRetries})` : '';
+        log(`Sending request → ${resolvedModel}${attemptMsg}`, 'info');
+        setProcessingHint(`Waiting for ${resolvedModel}...`);
+
         const response = await client.beta.messages.create({
           model: resolvedModel,
           max_tokens: 20000,
@@ -723,8 +763,9 @@ export function AITab({ context }) {
           }
         });
 
-        setProcessingHint('正在解析响应…');
-        console.info('[Strudel AI] 已收到 HTTP 响应，开始解析 JSON');
+        const tokens = response.usage;
+        log(`Response received — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens`);
+        setProcessingHint('Parsing response...');
         const block = response.content?.[0];
         const result = parseBetaContentBlock(block);
         
@@ -761,9 +802,11 @@ export function AITab({ context }) {
         if (!validationError) {
           if (result) {
             if (mode === 'modify' && !isAutoDJ && result.patches) {
+              log(`Done! ${result.patches.length} patches generated (${elapsedSecRef.current}s)`, 'highlight');
               setRationale(result.reasoning);
               setPendingPatches(result.patches.map(p => ({ ...p, status: 'pending' })));
             } else if (isAutoDJ && result.patches) {
+               log(`DJ patch generated (${elapsedSecRef.current}s)`, 'highlight');
                setRationale(result.reasoning);
                schedulePatches(result.patches);
             } else {
@@ -776,6 +819,7 @@ export function AITab({ context }) {
                     setRationale(prev => (prev || '') + `\n\n🔧 Auto-fixed sounds: ${fixNote}`);
                   }
                   context.editorRef.current.setCode(validatedCode);
+                  log(`Code applied! ${validatedCode.length} chars (${elapsedSecRef.current}s)`, 'highlight');
                 }
                 if (result.rationale) {
                   setRationale(result.rationale);
@@ -806,9 +850,12 @@ export function AITab({ context }) {
       }
 
     } catch (err) {
-      console.error('[Strudel AI] 请求失败:', err);
-      setError(err.message || 'Failed to generate code');
+      const errMsg = err.message || String(err);
+      log(`FAILED: ${errMsg} (${elapsedSecRef.current}s)`, 'error');
+      console.error('[Strudel AI] Request failed:', err);
+      setError(`${errMsg} (after ${elapsedSecRef.current}s)`);
     } finally {
+      stopTimer();
       setIsLoading(false);
       setProcessingHint('');
       if (isAutoDJ) setDjStatus('idle');
@@ -1273,12 +1320,15 @@ export function AITab({ context }) {
       )}
 
       {isLoading && processingHint && (
-        <div className="text-xs text-foreground/70 font-mono px-1">{processingHint}</div>
+        <div className="text-xs text-foreground/70 font-mono px-1 flex items-center gap-2">
+          <span className="animate-pulse">●</span>
+          <span>{processingHint}</span>
+          {elapsed > 0 && <span className="opacity-50">({elapsed}s)</span>}
+        </div>
       )}
       {!isLoading && (
         <p className="text-[11px] text-foreground/50 leading-snug px-1">
-          详细过程：打开浏览器开发者工具（F12 或 ⌥⌘I）→ <strong>Console</strong>，筛选日志前缀{' '}
-          <code className="rounded bg-lineHighlight px-0.5">[Strudel AI]</code>。
+          日志输出：打开 <strong>Console</strong> 标签页查看实时 AI 请求进度。
         </p>
       )}
 
