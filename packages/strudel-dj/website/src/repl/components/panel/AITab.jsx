@@ -82,21 +82,39 @@ function parseBetaContentBlock(block) {
     throw new Error('模型未返回可解析的 JSON 字段（中转可能未支持 structured outputs）');
   }
   let s = String(raw).trim();
-  const fenceFull = s.match(/^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/i);
-  if (fenceFull) s = fenceFull[1].trim();
-  else {
-    const fenceInner = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+
+  // Strip markdown code fences — accept json, javascript, js, or bare ```
+  const fenceRe = /^```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/i;
+  const fenceFull = s.match(fenceRe);
+  if (fenceFull) {
+    s = fenceFull[1].trim();
+  } else {
+    // Try inner fence (model sometimes wraps JSON in text before/after)
+    const fenceInnerRe = /```(?:json|javascript|js)?\s*([\s\S]*?)```/i;
+    const fenceInner = s.match(fenceInnerRe);
     if (fenceInner) s = fenceInner[1].trim();
   }
+  // Extract JSON object: find first '{' and last '}'
   const i0 = s.indexOf('{');
   const i1 = s.lastIndexOf('}');
-  if (i0 !== -1 && i1 > i0) s = s.slice(i0, i1 + 1);
+  if (i0 !== -1 && i1 > i0) {
+    s = s.slice(i0, i1 + 1);
+  }
+
   try {
     return JSON.parse(s);
   } catch (e) {
-    console.error('[Strudel AI] JSON.parse 失败，截取原文:', s.slice(0, 500));
+    // Last resort: strip everything before first '{' more aggressively
+    // (handles cases like "Here's the JSON: {...}")
+    const jsonStart = s.search(/\{\s*"/);
+    if (jsonStart > 0) {
+      const retry = s.slice(jsonStart);
+      try { return JSON.parse(retry); } catch (_) { /* fall through */ }
+    }
+    console.error('[Strudel AI] JSON.parse failed, raw:', s.slice(0, 500));
+    console.error('[Strudel AI] Full response:', raw?.slice(0, 1000));
     throw new Error(
-      `响应不是合法 JSON（常见于中转把内容包在 markdown 里）。打开开发者工具 (F12) → Console 可看完整日志。${e.message}`,
+      `响应不是合法 JSON（常见于中转把内容包在 markdown 里）。${e.message}`,
     );
   }
 }
@@ -767,7 +785,26 @@ export function AITab({ context }) {
         log(`Response received — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens`);
         setProcessingHint('Parsing response...');
         const block = response.content?.[0];
-        const result = parseBetaContentBlock(block);
+        let result;
+        try {
+          result = parseBetaContentBlock(block);
+        } catch (parseErr) {
+          // JSON parse failed — retry with format instruction
+          log(`JSON parse failed: ${parseErr.message}`, 'error');
+          console.error('[Strudel AI] parseBetaContentBlock failed, raw block:', block);
+          retries++;
+          // Push the failed response so model can self-correct
+          const rawText = block?.text || block?.input || '';
+          messages.push({
+            role: 'assistant',
+            content: JSON.stringify({ _raw: String(rawText).slice(0, 500) }),
+          });
+          messages.push({
+            role: 'user',
+            content: 'Your last response was NOT valid JSON (it was wrapped in markdown or contained extra text). Please respond with ONLY a raw JSON object, NO markdown fences, NO backticks, JUST the JSON.',
+          });
+          continue;
+        }
         
         let validationError = null;
         if (result) {
