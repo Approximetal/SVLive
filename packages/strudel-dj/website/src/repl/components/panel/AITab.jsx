@@ -192,11 +192,18 @@ function createAnthropicClient(secret, baseURL, authStylePref) {
   if (!sec) {
     console.warn('[AI] ⚠️  No API key configured — requests will fail with 401');
   }
+
+  // Route through vital-bridge proxy to avoid CORS blocks in browser.
+  // The bridge's /api-proxy endpoint forwards to the real provider (X-Proxy-Target header).
+  const BRIDGE_URL = 'http://localhost:8765';
+  const realBase = base || 'https://api.anthropic.com';
+
   return new Anthropic({
-    baseURL: base || undefined,
+    baseURL: `${BRIDGE_URL}/api-proxy`,
+    defaultHeaders: { 'x-proxy-target': realBase },
     ...(style === 'authToken' ? { authToken: sec } : { apiKey: sec }),
     dangerouslyAllowBrowser: true,
-    timeout: 120_000, // 2 min — prevents hanging forever
+    timeout: 180_000, // 3 min — proxy adds slight overhead
   });
 }
 
@@ -795,12 +802,6 @@ export function AITab({ context }) {
 
     try {
       const client = createAnthropicClient(apiKey, baseURL, authStylePref);
-
-      // Quick preflight: verify API connectivity with a minimal fetch call
-      const preflightResult = await quickPreflight(apiKey, baseURL, authStylePref, resolvedModel);
-      if (preflightResult !== true) {
-        log(`Preflight check: ${preflightResult}`, 'warn');
-      }
 
       const currentCode = getCurrentCode();
 

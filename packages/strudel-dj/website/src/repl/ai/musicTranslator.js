@@ -98,12 +98,40 @@ export async function translatePrompt(client, userPrompt, modelId) {
   if (block.input != null && typeof block.input === 'object') {
     result = block.input;
   } else {
-    const raw = block.text;
+    const raw = String(block.text || '').trim();
     if (!raw) throw new Error('Translator returned empty text');
-    // Strip markdown fences if present
+    // Try to extract JSON from markdown fences
     const fenceRe = /^```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/i;
-    const match = fenceRe.exec(String(raw).trim());
-    result = JSON.parse(match ? match[1] : raw);
+    const match = fenceRe.exec(raw);
+    const candidate = match ? match[1].trim() : raw;
+    try {
+      result = JSON.parse(candidate);
+    } catch {
+      // Model returned prose instead of JSON — extract what we can with regex
+      console.warn('[MusicTranslator] Structured output failed, attempting regex extraction from:', raw.slice(0, 200));
+      result = extractFromText(raw);
+    }
+  }
+
+  /**
+   * Fallback: when the model ignores the JSON schema and returns natural language,
+   * try to extract key fields with regex.
+   */
+  function extractFromText(text) {
+    const lower = text.toLowerCase();
+    const genreMatch = text.match(/genre[：:]\s*["']?(\w+)["']?/i)
+      || text.match(/\b(hyperpop|house|techno|trance|dnb|dubstep|trap|lofi|ambient|synthwave|jazz|classical|funk|hiphop|reggae|latin)\b/i);
+    const bpmMatch = text.match(/bpm[：:]\s*(\d{2,3})/i) || text.match(/\b(\d{2,3})\s*bpm\b/i);
+    const keyMatch = text.match(/key[：:]\s*["']?([A-G][#b]?\s*:\s*\w+)["']?/i);
+    return {
+      genre: genreMatch ? genreMatch[1].toLowerCase() : DEFAULT_TERMS.genre,
+      bpm: bpmMatch ? parseInt(bpmMatch[1]) : null,
+      key: keyMatch ? keyMatch[1].replace(/\s+/g, '') : null,
+      mood: ['energetic'],
+      instruments: ['bass', 'lead', 'pad', 'drum'],
+      soundTags: ['warm'],
+      description: text.slice(0, 80),
+    };
   }
 
   // Merge with defaults for safety

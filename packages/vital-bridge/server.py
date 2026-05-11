@@ -877,6 +877,61 @@ The current code is in {codefile}. Read it, then use the Edit tool to make preci
         shutil.rmtree(workdir, ignore_errors=True)
 
 
+# ============================================================
+# Transparent API Proxy — avoids CORS when calling 3rd-party
+# Anthropic-compatible APIs from browser (localhost origins)
+# ============================================================
+
+@app.api_route("/api-proxy/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def api_proxy(path: str, request: Request):
+    """Proxy requests to external Anthropic-compatible APIs to bypass CORS.
+
+    The browser SDK sets baseURL to http://localhost:8765/api-proxy
+    and passes the real target via X-Proxy-Target header.
+    """
+    import httpx
+
+    target = request.headers.get("x-proxy-target", "")
+    if not target:
+        raise HTTPException(status_code=400, detail="Missing X-Proxy-Target header")
+
+    # Build target URL: <target_base>/<request_path>?<query>
+    target = target.rstrip("/")
+    target_url = f"{target}/{path.lstrip('/')}"
+    if request.url.query:
+        target_url += f"?{request.url.query.decode() if isinstance(request.url.query, bytes) else request.url.query}"
+
+    # Forward headers (strip hop-by-hop and our custom one)
+    fwd_headers = {}
+    skip = {"host", "connection", "transfer-encoding", "x-proxy-target", "content-length"}
+    for key, val in request.headers.items():
+        if key.lower() not in skip:
+            fwd_headers[key] = val
+
+    body = await request.body()
+
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        resp = await client.request(
+            method=request.method,
+            url=target_url,
+            headers=fwd_headers,
+            content=body,
+        )
+
+    # Build response, preserving status, headers, body
+    resp_headers = dict(resp.headers)
+    # Strip hop-by-hop response headers
+    for h in ("transfer-encoding", "content-encoding", "connection"):
+        resp_headers.pop(h, None)
+
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        headers=resp_headers,
+        media_type=resp.headers.get("content-type"),
+    )
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "synth_ready": synth is not None}
