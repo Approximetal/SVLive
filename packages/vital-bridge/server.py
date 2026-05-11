@@ -678,7 +678,7 @@ async def proxy_verify(req: VerifyRequest):
     else:
         headers["x-api-key"] = req.apiKey
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url, headers=headers)
         return {"ok": resp.status_code < 400, "status": resp.status_code, "url": url}
     except Exception as e:

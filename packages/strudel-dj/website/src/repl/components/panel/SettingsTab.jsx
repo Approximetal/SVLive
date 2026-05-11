@@ -272,7 +272,7 @@ export function SettingsTab({ started }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
       const data = await res.json();
