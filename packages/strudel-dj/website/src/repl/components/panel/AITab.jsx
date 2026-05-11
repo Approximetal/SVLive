@@ -588,6 +588,63 @@ export function AITab({ context }) {
     return context.activeCode || '';
   };
 
+  // === Claude Code (local CLI) mode ===
+  const [ccOutput, setCcOutput] = useState('');
+  const BRIDGE_URL = 'http://localhost:8765';
+
+  const runClaudeCode = async () => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt');
+      return;
+    }
+
+    setIsLoading(true);
+    setProcessingHint('Running Claude Code...');
+    setError(null);
+    setRationale(null);
+    setPendingPatches([]);
+    setCcOutput('');
+
+    try {
+      const currentCode = getCurrentCode();
+      const res = await fetch(`${BRIDGE_URL}/claude/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: currentCode,
+          request: prompt,
+          mode: mode === 'generate' ? 'generate' : 'modify',
+        }),
+        signal: AbortSignal.timeout(190000), // 190s, server has 180s
+      });
+
+      const data = await res.json();
+      setCcOutput(data.output || '');
+
+      if (data.ok && data.changed) {
+        // Apply the modified code to editor
+        context.editorRef.current.setCode(data.code);
+        context.editorRef.current.evaluate();
+        setRationale('Claude Code applied changes. Check the editor for modifications.');
+      } else if (data.ok && !data.changed && mode === 'generate') {
+        context.editorRef.current.setCode(data.code);
+        context.editorRef.current.evaluate();
+        setRationale('Claude Code generated new code. Check the editor.');
+      } else if (!data.ok) {
+        setError(data.error || 'Claude Code failed');
+      } else {
+        setRationale('No changes were made.');
+      }
+    } catch (err) {
+      setError(err.message === 'Failed to fetch'
+        ? 'vital-bridge not running. Start: uvicorn server:app --port 8765'
+        : err.message);
+    } finally {
+      setIsLoading(false);
+      setProcessingHint('');
+    }
+  };
+
   const generateResponse = async (isAutoDJ = false) => {
     if (!apiKey) {
       setError('Please enter an API Key');
@@ -901,10 +958,15 @@ export function AITab({ context }) {
   return (
     <div className="h-full flex flex-col p-4 space-y-4 overflow-auto text-foreground" style={{ fontFamily }}>
       {/* Compact API status indicator */}
-      {!apiKey && (
+      {!apiKey && mode !== 'claude' && (
         <div className="p-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-xs flex items-center justify-between">
           <span>⚠️ API Key 未设置 — AI 功能不可用</span>
           <span className="text-foreground/50">在 Settings → AI Configuration 中配置</span>
+        </div>
+      )}
+      {mode === 'claude' && (
+        <div className="p-2 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-300 text-xs">
+          Claude Code 模式：使用本地 claude CLI + MCP 工具进行精确编辑。需要安装 <code className="bg-orange-500/20 px-1 rounded">@anthropic-ai/claude-code</code>
         </div>
       )}
 
@@ -946,6 +1008,15 @@ export function AITab({ context }) {
         >
            <ArrowPathIcon className="w-3 h-3" />
            <span>Alt</span>
+        </button>
+        <button
+          onClick={() => { setMode('claude'); setIsDJMode(false); }}
+          className={cx(
+            'flex-1 py-1 px-2 rounded-sm text-sm transition-colors flex items-center justify-center space-x-1',
+            mode === 'claude' ? 'bg-background shadow-sm text-orange-400' : 'hover:bg-background/50'
+          )}
+        >
+           <span>CC</span>
         </button>
       </div>
 
@@ -1122,13 +1193,17 @@ export function AITab({ context }) {
       {mode !== 'alternatives' && (
       <div className="space-y-2 flex-1 flex flex-col">
         <label className="block text-sm font-medium">
-          {mode === 'generate' ? 'Describe the music you want...' : mode === 'dj' ? 'Vibe / Direction (Optional)' : 'How should the code be changed?'}
+          {mode === 'generate' ? 'Describe the music you want...' :
+           mode === 'dj' ? 'Vibe / Direction (Optional)' :
+           mode === 'claude' ? 'What should Claude Code change?' :
+           'How should the code be changed?'}
         </label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={
               mode === 'generate' ? "Dark techno at 130bpm..." :
+              mode === 'claude' ? "Make the kick pattern more syncopated. Add a filter sweep to the bass..." :
               mode === 'modify' ? "Add more reverb to the snare..." :
               "Keep it dark and driving, add some percussion..."
           }
@@ -1141,6 +1216,13 @@ export function AITab({ context }) {
         <div className="bg-lineHighlight p-3 rounded-md text-sm space-y-2 border-l-4 border-green-500">
           <div className="font-bold text-xs uppercase tracking-wider opacity-70">AI Rationale</div>
           <div className="whitespace-pre-wrap leading-relaxed">{rationale}</div>
+        </div>
+      )}
+
+      {ccOutput && mode === 'claude' && (
+        <div className="bg-lineHighlight p-3 rounded-md text-sm space-y-2 border-l-4 border-orange-500 max-h-48 overflow-auto">
+          <div className="font-bold text-xs uppercase tracking-wider opacity-70">Claude Code Output</div>
+          <pre className="whitespace-pre-wrap leading-relaxed text-xs font-mono opacity-70">{ccOutput}</pre>
         </div>
       )}
 
@@ -1202,12 +1284,14 @@ export function AITab({ context }) {
 
       {mode !== 'dj' && mode !== 'alternatives' && (
           <button
-            onClick={() => generateResponse(false)}
-            disabled={isLoading || !apiKey}
+            onClick={() => mode === 'claude' ? runClaudeCode() : generateResponse(false)}
+            disabled={isLoading || (!apiKey && mode !== 'claude')}
             className={cx(
               "w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center space-x-2",
-              isLoading || !apiKey 
-                ? "bg-gray-600 cursor-not-allowed opacity-50" 
+              isLoading || (mode !== 'claude' && !apiKey)
+                ? "bg-gray-600 cursor-not-allowed opacity-50"
+                : mode === 'claude'
+                ? "bg-orange-500 text-white hover:bg-orange-400"
                 : "bg-foreground text-background hover:opacity-90"
             )}
           >
@@ -1220,7 +1304,7 @@ export function AITab({ context }) {
                 <span>{processingHint || 'Processing…'}</span>
               </>
             ) : (
-              <span>{mode === 'generate' ? 'Generate Code' : 'Suggest Changes'}</span>
+              <span>{mode === 'generate' ? 'Generate Code' : mode === 'claude' ? 'Run Claude Code' : 'Suggest Changes'}</span>
             )}
           </button>
       )}

@@ -248,6 +248,13 @@ class VerifyRequest(BaseModel):
     authStyle: str = "authToken"
     model: str = ""
 
+
+class ClaudeRequest(BaseModel):
+    code: str = ""          # current editor code
+    request: str = ""       # modification/generation instruction
+    mode: str = "modify"    # "modify" or "generate"
+
+
 class ExportRequest(BaseModel):
     preset: Optional[str] = None  # preset path (uses current if None)
     low: int = 36
@@ -779,6 +786,95 @@ async def proxy_verify(req: VerifyRequest):
             return {"ok": resp.status_code < 400, "status": resp.status_code, "url": url}
     except Exception as e:
         return {"ok": False, "status": 0, "error": str(e), "url": url}
+
+
+@app.post("/claude/run")
+async def claude_run(req: ClaudeRequest):
+    """Run Claude Code CLI to edit Strudel code with tool-calling.
+    Creates temp workspace with code + CLAUDE.md, runs claude -p, returns result."""
+    import subprocess
+    import tempfile
+    import shutil
+
+    if not req.code.strip():
+        return {"ok": False, "error": "No code provided"}
+
+    # Find Claude Code binary
+    claude_bin = shutil.which("claude")
+    if not claude_bin:
+        return {"ok": False, "error": "Claude Code CLI not found. Install with: npm i -g @anthropic-ai/claude-code"}
+
+    # Create temp workspace
+    workdir = Path(tempfile.mkdtemp(prefix="svlive_claude_"))
+    codefile = workdir / "pattern.js"
+    codefile.write_text(req.code)
+
+    # Copy CLAUDE.md for project context
+    project_root = Path(__file__).parent.parent.parent  # SVLive root
+    claude_md_src = project_root / "CLAUDE.md"
+    if claude_md_src.exists():
+        shutil.copy(claude_md_src, workdir / "CLAUDE.md")
+
+    # Also copy preset_tags.json for preset knowledge
+    tags_src = Path(__file__).parent / "preset_tags.json"
+    if tags_src.exists():
+        shutil.copy(tags_src, workdir / "preset_tags.json")
+
+    # Build the prompt
+    if req.mode == "generate":
+        prompt = f"""Create a new Strudel live-coding pattern in {codefile}.
+
+Request: {req.request}
+
+The file currently has starter code. Replace it entirely with a new composition following SVLive conventions (Vital presets for synths, Tidal samples for drums, use CLAUDE.md for syntax reference)."""
+    else:
+        prompt = f"""Edit the Strudel pattern in {codefile} based on this request.
+
+Request: {req.request}
+
+IMPORTANT RULES (from CLAUDE.md):
+- Make MINIMAL, targeted edits. Do NOT rewrite the entire file.
+- Identify the specific layer (orbit) to modify.
+- Preserve all other layers exactly as-is.
+- For drum changes: only touch drum layers (.o(0), .o(1), .o(2)).
+- For melody/synth changes: only touch synth layers.
+
+The current code is in {codefile}. Read it, then use the Edit tool to make precise changes."""
+
+    try:
+        result = subprocess.run(
+            [claude_bin, "-p", prompt],
+            cwd=str(workdir),
+            capture_output=True,
+            text=True,
+            timeout=180,
+            env={**os.environ, "NO_COLOR": "1"},
+        )
+
+        # Read the (possibly modified) code file
+        modified_code = codefile.read_text() if codefile.exists() else req.code
+
+        # Trim output to reasonable size
+        output = result.stdout
+        if len(output) > 4000:
+            output = output[-4000:]
+
+        return {
+            "ok": result.returncode == 0,
+            "code": modified_code,
+            "changed": modified_code != req.code,
+            "output": output,
+            "returncode": result.returncode,
+        }
+
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "Claude Code timed out (180s limit)"}
+    except FileNotFoundError:
+        return {"ok": False, "error": f"Claude Code not found at {claude_bin}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 @app.get("/health")
