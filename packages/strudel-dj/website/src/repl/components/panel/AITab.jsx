@@ -850,10 +850,26 @@ export function AITab({ context }) {
       }
 
     } catch (err) {
+      const errName = err.name || 'Error';
       const errMsg = err.message || String(err);
-      log(`FAILED: ${errMsg} (${elapsedSecRef.current}s)`, 'error');
+      const errStatus = err.status || '';
+      const statusText = errStatus ? ` HTTP ${errStatus}` : '';
+
+      // Classify error for better UX
+      let displayMsg = errMsg;
+      if (errName === 'APIConnectionError' || errMsg.includes('Connection error')) {
+        displayMsg = `Connection failed${statusText}. Check if the provider is reachable and your API key is valid.`;
+      } else if (errName === 'AuthenticationError' || errStatus === 401 || errStatus === 403) {
+        displayMsg = `Authentication failed${statusText}. Check your API key.`;
+      } else if (errStatus === 429) {
+        displayMsg = 'Rate limited (429). Wait and try again.';
+      } else if (errMsg.includes('timeout') || errMsg.includes('timed out')) {
+        displayMsg = `Request timed out. The model may be overloaded — try a smaller prompt or a different provider.`;
+      }
+
+      log(`FAILED [${errName}${statusText}]: ${errMsg} (${elapsedSecRef.current}s)`, 'error');
       console.error('[Strudel AI] Request failed:', err);
-      setError(`${errMsg} (after ${elapsedSecRef.current}s)`);
+      setError(`${displayMsg} (after ${elapsedSecRef.current}s)`);
     } finally {
       stopTimer();
       setIsLoading(false);
