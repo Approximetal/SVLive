@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 import numpy as np
 import vita
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -899,7 +899,7 @@ async def api_proxy(path: str, request: Request):
     target = target.rstrip("/")
     target_url = f"{target}/{path.lstrip('/')}"
     if request.url.query:
-        target_url += f"?{request.url.query.decode() if isinstance(request.url.query, bytes) else request.url.query}"
+        target_url += f"?{request.url.query}"
 
     # Forward headers (strip hop-by-hop and our custom one)
     fwd_headers = {}
