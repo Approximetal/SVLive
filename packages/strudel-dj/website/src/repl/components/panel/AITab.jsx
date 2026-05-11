@@ -120,6 +120,27 @@ function parseBetaContentBlock(block) {
   }
 }
 
+/** Classify API errors into brief human-readable codes */
+function briefError(err) {
+  const msg = err.message || String(err);
+  if (msg === 'TIMEOUT') return 'timed out';
+  // Extract error type from JSON body if present
+  const typeMatch = msg.match(/"type"\s*:\s*"([^"]+)"/);
+  if (typeMatch) {
+    const t = typeMatch[1];
+    if (t === 'new_api_error') return 'unavailable (model/group)';
+    if (t === 'authentication_error') return 'auth failed';
+  }
+  if (msg.includes('401')) return 'auth failed (401)';
+  if (msg.includes('403')) return 'forbidden (403)';
+  if (msg.includes('429')) return 'rate limited (429)';
+  if (msg.includes('503')) return 'unavailable (503)';
+  if (msg.includes('timeout') || msg.includes('timed out')) return 'timed out';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return 'offline';
+  // Truncate long messages
+  return msg.length > 60 ? msg.slice(0, 60) + '…' : msg;
+}
+
 function createAnthropicClient(secret, baseURL, authStylePref) {
   const base = (baseURL || '').trim();
   const sec = (secret || '').trim();
@@ -725,16 +746,18 @@ export function AITab({ context }) {
 
     try {
       const client = createAnthropicClient(apiKey, baseURL, authStylePref);
-      log('Client created, analyzing intent...');
 
       const currentCode = getCurrentCode();
 
       // === Module A: Intent Analysis (LLM-based translation + preset matching) ===
       let intent, presetGuidance = '';
       try {
-        log('Translating prompt to music terms via LLM...');
         setProcessingHint('Analyzing musical intent...');
-        const terms = await translatePrompt(client, prompt || '', resolvedModel);
+        // Time-box translation to 15s — if API is down, we fall back fast
+        const terms = await Promise.race([
+          translatePrompt(client, prompt || '', resolvedModel),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 15000)),
+        ]);
         // BPM defaults per genre (same as intentAnalyzer's DEFAULT_BPMS)
         const genreBPM = { house:124, techno:133, trance:140, ambient:70, jazz:95, dnb:174, hiphop:90, trap:145, lofi:78, dubstep:140, reggae:80, funk:110, garage:134, classical:80, hyperpop:160, synthwave:100, latin:110 };
         intent = {
@@ -757,10 +780,10 @@ export function AITab({ context }) {
           log('No Vital presets matched — model will choose sounds freely');
         }
       } catch (transErr) {
-        // Fallback to regex-based analyzer
-        log(`LLM translation failed: ${transErr.message}, falling back to regex analyzer`, 'warn');
+        // Fast path: regex analyzer when LLM translate is unavailable
+        const reason = briefError(transErr);
         intent = analyzeIntent(prompt || '');
-        log(`Intent (fallback): ${intent.genre || 'unknown'} | ${intent.bpm || '?'}bpm | ${intent.mood || '?'}`);
+        log(`Intent (local): ${intent.genre} | ${intent.bpm}bpm | ${intent.mood} (LLM translate: ${reason})`);
       }
 
       let userMessage = prompt;
