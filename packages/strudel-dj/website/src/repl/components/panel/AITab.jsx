@@ -114,6 +114,7 @@ function createAnthropicClient(secret, baseURL, authStylePref) {
     baseURL: base || undefined,
     ...(style === 'authToken' ? { authToken: sec } : { apiKey: sec }),
     dangerouslyAllowBrowser: true,
+    timeout: 120_000, // 2 min — prevents hanging forever
   });
 }
 
@@ -597,9 +598,8 @@ export function AITab({ context }) {
     const prefix = '[AI]';
     console.info(`${prefix} ${message}`);
     try {
-      logger.dispatchEvent(new CustomEvent(logger.key, {
-        detail: { message: `${prefix} ${message}`, type: type || undefined, data: {} },
-      }));
+      // logger() is a function that dispatches a CustomEvent on document
+      logger(`${prefix} ${message}`, type || undefined, {});
     } catch (_) { /* ignore */ }
   }, []);
 
