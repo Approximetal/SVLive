@@ -915,22 +915,23 @@ export function AITab({ context }) {
 
         const finalMessage = await stream.finalMessage();
         const tokens = finalMessage.usage;
-        log(`Stream complete — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens`);
+        log(`Stream complete — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens (${fullText.length} chars)`);
         setProcessingHint('Parsing response...');
-        const block = finalMessage.content?.[0];
+
+        // Parse from accumulated streaming text (more reliable than finalMessage.content
+        // which may have different block structures in streaming mode)
         let result;
         try {
-          result = parseBetaContentBlock(block);
+          result = parseBetaContentBlock({ text: fullText });
         } catch (parseErr) {
           // JSON parse failed — retry with format instruction
           log(`JSON parse failed: ${parseErr.message}`, 'error');
-          console.error('[Strudel AI] parseBetaContentBlock failed, raw block:', block);
+          console.error('[Strudel AI] parseBetaContentBlock failed, sample:', fullText.slice(0, 300));
           retries++;
           // Push the failed response so model can self-correct
-          const rawText = block?.text || block?.input || '';
           messages.push({
             role: 'assistant',
-            content: JSON.stringify({ _raw: String(rawText).slice(0, 500) }),
+            content: JSON.stringify({ _raw: String(fullText).slice(0, 500) }),
           });
           messages.push({
             role: 'user',
