@@ -179,7 +179,7 @@ export function SettingsTab({ started }) {
   });
   const [aiBaseURL, setAiBaseURL] = useState(() => localStorage.getItem('anthropic_base_url') || '');
   const [aiApiKey, setAiApiKey] = useState(() => {
-    const provider = localStorage.getItem('ai_provider') || 'claude-code';
+    const provider = localStorage.getItem('ai_provider') || 'yxai88';
     const savedKey = localStorage.getItem(getProviderKeyStorageId(provider));
     if (savedKey) return savedKey;
     return localStorage.getItem('anthropic_api_key') || '';

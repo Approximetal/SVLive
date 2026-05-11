@@ -8,12 +8,12 @@
  */
 
 export const MODEL_PROVIDERS = {
-  'claude-code': {
-    name: 'Claude Code (Third-party)',
-    baseURL: '',
-    authStyle: 'authToken',
+  'yxai88': {
+    name: 'yxai88',
+    baseURL: 'https://api.yxai88.com',
+    authStyle: 'apiKey',
     defaultModel: 'claude-sonnet-4-6',
-    description: 'yxai88 or similar third-party Claude API proxy',
+    description: 'Anthropic-native compatible proxy (api.yxai88.com, x-api-key auth)',
   },
   'deepseek': {
     name: 'DeepSeek',
