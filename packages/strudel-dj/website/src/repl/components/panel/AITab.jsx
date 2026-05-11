@@ -141,6 +141,42 @@ function briefError(err) {
   return msg.length > 60 ? msg.slice(0, 60) + '…' : msg;
 }
 
+/**
+ * Quick preflight check: minimal API call to verify connectivity before the heavy request.
+ * Uses raw fetch (bypasses SDK) to isolate auth/config vs SDK issues.
+ * Returns true on success, or an error description string.
+ */
+async function quickPreflight(secret, baseURL, authStyle, model) {
+  if (!secret) return 'no API key';
+  const base = (baseURL || 'https://api.anthropic.com').replace(/\/+$/, '');
+  const url = `${base}/v1/messages`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(authStyle === 'apiKey' || (!authStyle && !base)
+      ? { 'x-api-key': secret }
+      : { Authorization: `Bearer ${secret}` }),
+  };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: model || 'claude-sonnet-4-6',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'p' }],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) return true;
+    const body = await res.text().catch(() => '');
+    // Extract short error
+    const short = body.length > 100 ? body.slice(0, 100) + '…' : body;
+    return `${res.status} ${short}`;
+  } catch (err) {
+    return err.message === 'Failed to fetch' ? 'network unreachable' : err.message;
+  }
+}
+
 function createAnthropicClient(secret, baseURL, authStylePref) {
   const base = (baseURL || '').trim();
   const sec = (secret || '').trim();
@@ -759,6 +795,12 @@ export function AITab({ context }) {
 
     try {
       const client = createAnthropicClient(apiKey, baseURL, authStylePref);
+
+      // Quick preflight: verify API connectivity with a minimal fetch call
+      const preflightResult = await quickPreflight(apiKey, baseURL, authStylePref, resolvedModel);
+      if (preflightResult !== true) {
+        log(`Preflight check: ${preflightResult}`, 'warn');
+      }
 
       const currentCode = getCurrentCode();
 
