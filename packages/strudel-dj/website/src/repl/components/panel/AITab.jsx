@@ -586,6 +586,7 @@ export function AITab({ context }) {
   const [mode, setMode] = useState('generate'); // 'generate', 'modify', 'dj', or 'alternatives'
   const [isLoading, setIsLoading] = useState(false);
   const [processingHint, setProcessingHint] = useState('');
+  const [streamingText, setStreamingText] = useState(''); // Real-time streaming output
   const [error, setError] = useState(null);
   const [rationale, setRationale] = useState(null);
   const [pendingPatches, setPendingPatches] = useState([]); // Store patches for approval
@@ -791,6 +792,7 @@ export function AITab({ context }) {
 
     setIsLoading(true);
     setProcessingHint('Connecting...');
+    setStreamingText('');
     startTimer();
     const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
     log(`Starting ${mode} request → ${resolvedModel} @ ${baseURL || 'api.anthropic.com'}`);
@@ -881,10 +883,12 @@ export function AITab({ context }) {
       while (retries < maxRetries) {
         const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
         const attemptMsg = retries > 0 ? ` (retry ${retries}/${maxRetries})` : '';
-        log(`Sending request → ${resolvedModel}${attemptMsg}`, 'info');
-        setProcessingHint('Waiting for LLM response...');
+        log(`Streaming request → ${resolvedModel}${attemptMsg}`, 'info');
+        setProcessingHint('Streaming...');
+        setStreamingText('');
 
-        const response = await client.beta.messages.create({
+        // ── Streaming: real-time text deltas from the model ──
+        const stream = await client.beta.messages.stream({
           model: resolvedModel,
           max_tokens: 20000,
           betas: ["structured-outputs-2025-11-13"],
@@ -896,10 +900,26 @@ export function AITab({ context }) {
           }
         });
 
-        const tokens = response.usage;
-        log(`Response received — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens`);
+        let fullText = '';
+        let lastUpdate = 0;
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta?.text) {
+            fullText += event.delta.text;
+            // Throttle re-renders to ~100ms intervals (except first 500 chars)
+            const now = Date.now();
+            if (now - lastUpdate > 100 || fullText.length < 500) {
+              setStreamingText(fullText);
+              lastUpdate = now;
+            }
+          }
+        }
+        setStreamingText(fullText); // Final update
+
+        const finalMessage = await stream.finalMessage();
+        const tokens = finalMessage.usage;
+        log(`Stream complete — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens`);
         setProcessingHint('Parsing response...');
-        const block = response.content?.[0];
+        const block = finalMessage.content?.[0];
         let result;
         try {
           result = parseBetaContentBlock(block);
@@ -1026,6 +1046,7 @@ export function AITab({ context }) {
       stopTimer();
       setIsLoading(false);
       setProcessingHint('');
+      setStreamingText('');
       if (isAutoDJ) setDjStatus('idle');
     }
   };
@@ -1492,6 +1513,14 @@ export function AITab({ context }) {
           <span className="animate-pulse">●</span>
           <span>{processingHint}</span>
           {elapsed > 0 && <span className="opacity-50">({elapsed}s)</span>}
+        </div>
+      )}
+      {/* Streaming text preview — shows real-time model output */}
+      {isLoading && streamingText && (
+        <div className="mx-1 mt-1 mb-2 p-2 bg-lineHighlight rounded border border-lineHighlight max-h-48 overflow-y-auto">
+          <pre className="text-[11px] text-foreground/60 font-mono whitespace-pre-wrap break-all leading-relaxed">
+            {streamingText.slice(-2000)}
+          </pre>
         </div>
       )}
       {!isLoading && (

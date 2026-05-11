@@ -888,6 +888,9 @@ async def api_proxy(path: str, request: Request):
 
     The browser SDK sets baseURL to http://localhost:8765/api-proxy
     and passes the real target via X-Proxy-Target header.
+
+    Supports both regular and streaming (SSE) responses — detected from
+    ``"stream": true`` in the request body.
     """
     import httpx
 
@@ -910,6 +913,39 @@ async def api_proxy(path: str, request: Request):
 
     body = await request.body()
 
+    # Detect streaming: if the request body has "stream": true, use SSE streaming
+    is_stream = False
+    try:
+        body_json = json.loads(body)
+        is_stream = body_json.get("stream", False)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        pass
+
+    if is_stream:
+        # ── Streaming (SSE) proxy ──
+        async def event_generator():
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                async with client.stream(
+                    method=request.method,
+                    url=target_url,
+                    headers=fwd_headers,
+                    content=body,
+                ) as resp:
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+
+        return StreamingResponse(
+            event_generator(),
+            status_code=200,
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ── Regular (buffered) proxy ──
     async with httpx.AsyncClient(timeout=180.0) as client:
         resp = await client.request(
             method=request.method,
