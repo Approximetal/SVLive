@@ -11,6 +11,7 @@ import { PatternsTab } from './PatternsTab';
 import { AITab } from './AITab';
 import { ExamplesTab } from './ExamplesTab';
 import { ChevronLeftIcon, XMarkIcon } from '@heroicons/react/16/solid';
+import { useState, useEffect } from 'react';
 
 const TAURI = typeof window !== 'undefined' && window.__TAURI__;
 
@@ -121,26 +122,39 @@ function PanelNav({ children, className, settings, ...props }) {
 
 function PanelContent({ context, tab }) {
   useLogger();
-  switch (tab) {
-    case tabNames.patterns:
-      return <PatternsTab context={context} />;
-    case tabNames.ai:
-      return <AITab context={context} />;
-    case tabNames.examples:
-      return <ExamplesTab context={context} />;
-    case tabNames.console:
-      return <ConsoleTab />;
-    case tabNames.sounds:
-      return <SoundsTab context={context} />;
-    case tabNames.reference:
-      return <Reference />;
-    case tabNames.settings:
-      return <SettingsTab started={context.started} />;
-    case tabNames.files:
-      return <FilesTab />;
-    default:
-      return <WelcomeTab context={context} />;
-  }
+  // Keep-alive: mount tabs on first visit, hide (not unmount) on switch
+  // This preserves state like API results, verify status, AI conversations
+  const [mountedTabs, setMountedTabs] = useState(() => new Set([tab]));
+
+  useEffect(() => {
+    setMountedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  }, [tab]);
+
+  const show = (tabKey) => mountedTabs.has(tabKey);
+
+  return (
+    <>
+      {show(tabNames.welcome) && <TabPanel show={tab === tabNames.welcome}><WelcomeTab context={context} /></TabPanel>}
+      {show(tabNames.ai) && <TabPanel show={tab === tabNames.ai}><AITab context={context} /></TabPanel>}
+      {show(tabNames.examples) && <TabPanel show={tab === tabNames.examples}><ExamplesTab context={context} /></TabPanel>}
+      {show(tabNames.patterns) && <TabPanel show={tab === tabNames.patterns}><PatternsTab context={context} /></TabPanel>}
+      {show(tabNames.sounds) && <TabPanel show={tab === tabNames.sounds}><SoundsTab context={context} /></TabPanel>}
+      {show(tabNames.reference) && <TabPanel show={tab === tabNames.reference}><Reference /></TabPanel>}
+      {show(tabNames.console) && <TabPanel show={tab === tabNames.console}><ConsoleTab /></TabPanel>}
+      {show(tabNames.settings) && <TabPanel show={tab === tabNames.settings}><SettingsTab started={context.started} /></TabPanel>}
+      {show(tabNames.files) && <TabPanel show={tab === tabNames.files}><FilesTab /></TabPanel>}
+    </>
+  );
+}
+
+/** Wrapper: renders children always, hides with display:none when inactive */
+function TabPanel({ show, children }) {
+  return <div hidden={!show}>{children}</div>;
 }
 
 function PanelTab({ label, isSelected, onClick }) {
