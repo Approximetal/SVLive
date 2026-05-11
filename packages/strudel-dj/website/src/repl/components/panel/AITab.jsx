@@ -542,7 +542,7 @@ stack(
   n("d3'min").s("vital_pd_warm_pad")
     .room(0.6).gain(0.25).o(3)
 )
-\`\`\``
+\`\`\`
 
 ## Output Format
 
