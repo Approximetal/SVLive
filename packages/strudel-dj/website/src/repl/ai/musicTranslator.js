@@ -100,10 +100,16 @@ export async function translatePrompt(client, userPrompt, modelId) {
   } else {
     const raw = String(block.text || '').trim();
     if (!raw) throw new Error('Translator returned empty text');
-    // Try to extract JSON from markdown fences
-    const fenceRe = /^```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/i;
-    const match = fenceRe.exec(raw);
-    const candidate = match ? match[1].trim() : raw;
+    // Try to extract JSON from markdown fences (anywhere in text, not just start/end)
+    const fenceRe = /```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```/i;
+    const fenceMatch = fenceRe.exec(raw);
+    let candidate = fenceMatch ? fenceMatch[1].trim() : raw;
+    // Also try to find a raw JSON object if it's embedded in prose
+    if (!fenceMatch) {
+      const jsonObjRe = /\{[\s\S]*"genre"[\s\S]*\}/;
+      const jsonMatch = jsonObjRe.exec(raw);
+      if (jsonMatch) candidate = jsonMatch[0];
+    }
     try {
       result = JSON.parse(candidate);
     } catch {
@@ -119,10 +125,14 @@ export async function translatePrompt(client, userPrompt, modelId) {
    */
   function extractFromText(text) {
     const lower = text.toLowerCase();
-    const genreMatch = text.match(/genre[：:]\s*["']?(\w+)["']?/i)
+    const genreMatch = text.match(/"genre"\s*:\s*"(\w+)"/i)
+      || text.match(/genre[：:]\s*["']?(\w+)["']?/i)
       || text.match(/\b(hyperpop|house|techno|trance|dnb|dubstep|trap|lofi|ambient|synthwave|jazz|classical|funk|hiphop|reggae|latin)\b/i);
-    const bpmMatch = text.match(/bpm[：:]\s*(\d{2,3})/i) || text.match(/\b(\d{2,3})\s*bpm\b/i);
-    const keyMatch = text.match(/key[：:]\s*["']?([A-G][#b]?\s*:\s*\w+)["']?/i);
+    const bpmMatch = text.match(/"bpm"\s*:\s*(\d{2,3})/i)
+      || text.match(/bpm[：:]\s*(\d{2,3})/i)
+      || text.match(/\b(\d{2,3})\s*bpm\b/i);
+    const keyMatch = text.match(/"key"\s*:\s*"([A-G][#b]?\s*:\s*\w+)"/i)
+      || text.match(/key[：:]\s*["']?([A-G][#b]?\s*:\s*\w+)["']?/i);
     return {
       genre: genreMatch ? genreMatch[1].toLowerCase() : DEFAULT_TERMS.genre,
       bpm: bpmMatch ? parseInt(bpmMatch[1]) : null,
