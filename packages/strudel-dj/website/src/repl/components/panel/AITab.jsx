@@ -888,16 +888,14 @@ export function AITab({ context }) {
         setStreamingText('');
 
         // ── Streaming: real-time text deltas from the model ──
-        const stream = await client.beta.messages.stream({
+        // Note: uses messages.stream() (not beta.messages) for broader SDK compatibility.
+        // Structured output (output_format) is not used in stream mode — the system
+        // prompt already instructs the model to output JSON.
+        const stream = await client.messages.stream({
           model: resolvedModel,
           max_tokens: 20000,
-          betas: ["structured-outputs-2025-11-13"],
           system: systemPrompt,
           messages: messages,
-          output_format: {
-            type: "json_schema",
-            schema: schema
-          }
         });
 
         let fullText = '';

@@ -98,8 +98,11 @@ export async function translatePrompt(client, userPrompt, modelId) {
   if (block.input != null && typeof block.input === 'object') {
     result = block.input;
   } else {
-    const raw = String(block.text || '').trim();
-    if (!raw) throw new Error('Translator returned empty text');
+    let raw = String(block.text || '').trim();
+    // Guard against garbled/binary responses
+    if (!raw || raw.length < 3 || /^[\x00-\x08\x0b\x0c\x0e-\x1f]+/.test(raw)) {
+      throw new Error(`Translator returned unparseable content (${raw.length} bytes)`);
+    }
     // Try to extract JSON from markdown fences (anywhere in text, not just start/end)
     const fenceRe = /```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```/i;
     const fenceMatch = fenceRe.exec(raw);

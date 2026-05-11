@@ -954,10 +954,11 @@ async def api_proxy(path: str, request: Request):
             content=body,
         )
 
-    # Build response, preserving status, headers, body
+    # Forward response as-is — httpx handles decompression transparently,
+    # so headers already reflect the decompressed body (no content-encoding).
+    # Only strip true hop-by-hop headers.
     resp_headers = dict(resp.headers)
-    # Strip hop-by-hop response headers
-    for h in ("transfer-encoding", "content-encoding", "connection"):
+    for h in ("transfer-encoding", "connection", "keep-alive"):
         resp_headers.pop(h, None)
 
     return Response(
