@@ -749,7 +749,7 @@ export function AITab({ context }) {
         const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
         const attemptMsg = retries > 0 ? ` (retry ${retries}/${maxRetries})` : '';
         log(`Sending request → ${resolvedModel}${attemptMsg}`, 'info');
-        setProcessingHint(`Waiting for ${resolvedModel}...`);
+        setProcessingHint('Waiting for LLM response...');
 
         const response = await client.beta.messages.create({
           model: resolvedModel,
