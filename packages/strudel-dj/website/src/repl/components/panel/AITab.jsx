@@ -546,17 +546,22 @@ export function AITab({ context }) {
       let pref = /** @type {AuthStylePref} */ (
         localStorage.getItem('anthropic_auth_style_pref') || 'auto'
       );
-      let model = localStorage.getItem('anthropic_model')?.trim() || DEFAULT_ANTHROPIC_MODEL;
+      let model = localStorage.getItem('anthropic_model')?.trim() || '';
 
       if (file && typeof file === 'object') {
+        // baseURL / auth always sync from file
         if (typeof file.baseURL === 'string' && file.baseURL.trim()) base = file.baseURL.trim();
         if (typeof file.authToken === 'string' && file.authToken.trim()) secret = file.authToken.trim();
         else if (typeof file.apiKey === 'string' && file.apiKey.trim()) secret = file.apiKey.trim();
         if (file.authStyle === 'authToken') pref = 'authToken';
         else if (file.authStyle === 'apiKey') pref = 'apiKey';
-        if (typeof file.model === 'string' && file.model.trim()) model = file.model.trim();
-        else if (typeof file.modelId === 'string' && file.modelId.trim()) model = file.modelId.trim();
+        // Model: only use file as fallback when user hasn't explicitly set one
+        if (!model) {
+          if (typeof file.model === 'string' && file.model.trim()) model = file.model.trim();
+          else if (typeof file.modelId === 'string' && file.modelId.trim()) model = file.modelId.trim();
+        }
       }
+      if (!model) model = DEFAULT_ANTHROPIC_MODEL;
 
       // yxai88 等分组常无 claude-sonnet-4-5；浏览器里若仍存 4.5 会反复 503，迁到默认 4.6
       if (model === 'claude-sonnet-4-5' && base.includes('yxai88')) {
