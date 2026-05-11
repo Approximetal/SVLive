@@ -843,7 +843,7 @@ The current code is in {codefile}. Read it, then use the Edit tool to make preci
 
     try:
         result = subprocess.run(
-            [claude_bin, "-p", prompt],
+            [claude_bin, "-p", "--dangerously-skip-permissions", prompt],
             cwd=str(workdir),
             capture_output=True,
             text=True,
