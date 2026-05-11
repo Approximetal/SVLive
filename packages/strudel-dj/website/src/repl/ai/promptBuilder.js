@@ -53,49 +53,43 @@ ${exampleCode}
 
 ## Final Checklist Before Output
 1. ✅ Used \`setCpm(${intent.bpm}/4)\` for tempo
-2. ✅ All sounds are from the VERIFIED list above
-3. ✅ Used \`.scale("${intent.key}")\` for melodic content
-4. ✅ Patterns are dense enough for the tempo (e.g., \`s("bd*4")\` not \`s("bd")\`)
-5. ✅ Code is wrapped in a single \`stack(...)\`
-6. ✅ Each layer has a comment explaining its role
-7. ✅ At least one \`slider()\` for live performance control
+2. ✅ **ALL melodic/harmonic/texture sounds use Vital presets** (loaded with \`await vital()\`, played with \`vital_*\`)
+3. ✅ **NO native synth sounds** (sawtooth, sine, supersaw, triangle, square, gm_*)
+4. ✅ Only drums/percussion use dirt-samples (bd, hh, sd, cp, etc.)
+5. ✅ Used \`.scale("${intent.key}")\` for melodic content
+6. ✅ Patterns are dense enough for the tempo (e.g., \`s("bd*4")\` not \`s("bd")\`)
+7. ✅ Code is wrapped in a single \`stack(...)\`
+8. ✅ Each layer has a comment explaining its role
+9. ✅ At least one \`slider()\` for live performance control
 `;
 }
 
 function getSoundGuidance(intent, genreSounds) {
-  let guidance = `## Recommended Sounds for ${intent.genre}\n\n`;
-  
+  let guidance = `## Sound Selection for ${intent.genre}\n\n`;
+
+  guidance += `### ⚠️ ALL melodic/harmonic sounds MUST use Vital presets (not native synths)\n`;
+  guidance += `Load: \`await vital('Preset Name')\` → Play: \`.s("vital_preset_name")\`\n\n`;
+
   if (genreSounds.drums) {
-    guidance += `### Drums\nUse \`s("element").bank("${genreSounds.drums}")\` or sample prefix \`s("${genreSounds.drums}_bd")\`\n`;
-    guidance += `Available elements: bd, sd, cp, hh, oh, lt, mt, ht, cr, rd, rim\n\n`;
+    guidance += `### Drums (samples only)\n`;
+    guidance += `\`s("bd").bank("${genreSounds.drums}")\`, \`s("hh").bank("${genreSounds.drums}")\`\n`;
+    guidance += `Elements: bd, sd, cp, hh, oh, lt, mt, ht, cr, rd, rim\n\n`;
   }
-  
-  if (genreSounds.bass) {
-    guidance += `### Bass\nChoose from: ${genreSounds.bass.map(s => `\`${s}\``).join(', ')}\n\n`;
-  }
-  
-  if (genreSounds.pads) {
-    guidance += `### Pads & Atmosphere\nChoose from: ${genreSounds.pads.map(s => `\`${s}\``).join(', ')}\n\n`;
-  }
-  
-  if (genreSounds.leads) {
-    guidance += `### Leads & Melody\nChoose from: ${genreSounds.leads.map(s => `\`${s}\``).join(', ')}\n\n`;
-  }
-  
-  if (genreSounds.keys) {
-    guidance += `### Keys & Chords\nChoose from: ${genreSounds.keys.map(s => `\`${s}\``).join(', ')}\n\n`;
-  }
-  
-  if (genreSounds.fx) {
-    guidance += `### FX & Texture\nChoose from: ${genreSounds.fx.map(s => `\`${s}\``).join(', ')}\n\n`;
-  }
-  
-  guidance += `### FORBIDDEN: Do NOT use sounds not in the lists above. Common mistakes:\n`;
+
+  guidance += `### Bass (Vital presets)\n`;
+  guidance += `Pick from: \`Thicccboi 808\`, \`BA - Rubber Bounciness\`, \`BA - Deep House\`, \`Psytrance Bass\`, \`808 Bass 4\`\n\n`;
+
+  guidance += `### Pads & Atmosphere (Vital presets)\n`;
+  guidance += `Pick from: \`DRONE Floating\`, \`Analog Pad\`, \`PD - Warm Pad\`, \`PD - Lush\`, \`PD - Cinematic\`\n\n`;
+
+  guidance += `### Leads & Melody (Vital presets)\n`;
+  guidance += `Pick from: \`Super Pluck\`, \`LD - Supersaw\`, \`LD - Future Bass\`, \`Plucked String\`, \`KEYS - FM Bell\`\n\n`;
+
+  guidance += `### FORBIDDEN sounds:\n`;
+  guidance += `- ❌ sawtooth, sine, supersaw, triangle, square, pulse, noise\n`;
+  guidance += `- ❌ Any gm_* sound (gm_synth_bass_1, gm_lead_2_sawtooth, etc.)\n`;
   guidance += `- ❌ "shaker" → use "hh" with .hpf(8000)\n`;
-  guidance += `- ❌ "djembe" → use "cp" or drum sample\n`;
-  guidance += `- ❌ "conga" → use "lt" or "mt"\n`;
-  guidance += `- ❌ random GM names not in the list\n`;
-  
+
   return guidance;
 }
 
@@ -196,9 +190,10 @@ export function buildModifyPrompt(intent, currentCode, baseModifyPrompt, presetG
 ${presetGuidance}
 
 ## Valid Sounds for Replacements
-Bass: ${(GENRE_SOUND_MAP[intent.genre]?.bass || ['gm_synth_bass_1']).join(', ')}
-Pads: ${(GENRE_SOUND_MAP[intent.genre]?.pads || ['gm_pad_warm']).join(', ')}
-Leads: ${(GENRE_SOUND_MAP[intent.genre]?.leads || ['gm_lead_2_sawtooth']).join(', ')}
-Drums: Use s("element") with standard elements (bd, sd, hh, oh, cp, cr, rd, rim, lt, mt, ht)
+⚠️ **MUST use Vital presets for all non-drum sounds.** NEVER replace with native synths (sawtooth, sine, supersaw, etc.)
+- **Bass**: Use Vital presets — \`Thicccboi 808\`, \`BA - Rubber Bounciness\`, \`BA - Deep House\`, \`Psytrance Bass\`
+- **Pads**: Use Vital presets — \`DRONE Floating\`, \`Analog Pad\`, \`PD - Warm Pad\`, \`PD - Lush\`
+- **Leads**: Use Vital presets — \`Super Pluck\`, \`LD - Supersaw\`, \`Plucked String\`, \`KEYS - FM Bell\`
+- **Drums**: Use dirt-samples — s("bd"), s("hh"), s("sd"), s("oh"), s("cp"), s("cr"), s("rim"), s("lt"), s("mt"), s("ht")
 `;
 }
