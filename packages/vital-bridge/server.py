@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 
 import numpy as np
 import vita
+import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.responses import Response, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -240,6 +241,11 @@ class RenderBatchRequest(BaseModel):
 class LoadPresetRequest(BaseModel):
     path: str  # absolute or relative path to .vital file
 
+
+class VerifyRequest(BaseModel):
+    baseURL: str = ""
+    apiKey: str = ""
+    authStyle: str = "authToken"
 
 class ExportRequest(BaseModel):
     preset: Optional[str] = None  # preset path (uses current if None)
@@ -658,6 +664,25 @@ async def export_preset(req: ExportRequest):
             "X-Render-Time-Ms": str(round(elapsed)),
         }
     )
+
+
+@app.post("/proxy/verify")
+async def proxy_verify(req: VerifyRequest):
+    """Proxy an API connectivity check — avoids CORS issues in browser.
+    Sends GET /v1/models to the target Anthropic-compatible endpoint."""
+    import httpx
+    url = (req.baseURL or "https://api.anthropic.com").rstrip("/") + "/v1/models"
+    headers = {"Content-Type": "application/json"}
+    if req.authStyle == "authToken":
+        headers["Authorization"] = f"Bearer {req.apiKey}"
+    else:
+        headers["x-api-key"] = req.apiKey
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+        return {"ok": resp.status_code < 400, "status": resp.status_code, "url": url}
+    except Exception as e:
+        return {"ok": False, "status": 0, "error": str(e), "url": url}
 
 
 @app.get("/health")

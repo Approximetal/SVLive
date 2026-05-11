@@ -1,0 +1,12 @@
+{
+  "providers": {
+    "my-provider": {
+      "name": "My Provider",
+      "baseURL": "https://api.example.com",
+      "authStyle": "authToken",
+      "model": "example-model",
+      "apiKey": "sk-your-key-here",
+      "verified": false
+    }
+  }
+}

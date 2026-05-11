@@ -10,7 +10,7 @@ import { confirmDialog } from '../../util.mjs';
 import { DEFAULT_MAX_POLYPHONY, setMaxPolyphony, setMultiChannelOrbits } from '@strudel/webaudio';
 import cx from '@src/cx.mjs';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
-import { MODEL_PROVIDERS, getProviderKeyStorageId } from '../../ai/modelProviders.js';
+import { BUILTIN_PROVIDERS, getMergedProviders, getProviderKeyStorageId } from '../../ai/modelProviders.js';
 
 // === Reusable Form Components ===
 
@@ -114,6 +114,10 @@ const ANTHROPIC_MODEL_SUGGESTIONS = [
   'claude-3-5-sonnet-20241022',
   'claude-3-5-haiku-20241022',
   'claude-3-opus-20240229',
+  'deepseek-v4-pro',
+  'deepseek-v4',
+  'kimi-for-coding',
+  'kimi-k2.6',
 ];
 
 const themeOptions = Object.fromEntries(Object.keys(themes).map((k) => [k, k]));
@@ -172,16 +176,22 @@ export function SettingsTab({ started }) {
   const shouldAlwaysSync = isUdels();
   const canChangeAudioDevice = AudioContext.prototype.setSinkId != null;
 
+  // Merged providers (built-in + local config with API keys)
+  const [mergedProviders, setMergedProviders] = useState(BUILTIN_PROVIDERS);
+
   // AI API settings from localStorage
   const [aiProvider, setAiProvider] = useState(() => {
     const saved = localStorage.getItem('ai_provider');
-    return saved && MODEL_PROVIDERS[saved] ? saved : 'claude-code';
+    return saved && BUILTIN_PROVIDERS[saved] ? saved : 'deepseek';
   });
   const [aiBaseURL, setAiBaseURL] = useState(() => localStorage.getItem('anthropic_base_url') || '');
   const [aiApiKey, setAiApiKey] = useState(() => {
-    const provider = localStorage.getItem('ai_provider') || 'yxai88';
-    const savedKey = localStorage.getItem(getProviderKeyStorageId(provider));
-    if (savedKey) return savedKey;
+    // Try to load from localStorage first (persisted key)
+    const provider = localStorage.getItem('ai_provider');
+    if (provider) {
+      const savedKey = localStorage.getItem(getProviderKeyStorageId(provider));
+      if (savedKey) return savedKey;
+    }
     return localStorage.getItem('anthropic_api_key') || '';
   });
   const [aiAuthStyle, setAiAuthStyle] = useState(() => localStorage.getItem('anthropic_auth_style_pref') || 'auto');
@@ -189,56 +199,89 @@ export function SettingsTab({ started }) {
   const [aiVerifyStatus, setAiVerifyStatus] = useState(null); // null | 'loading' | 'success' | 'error'
   const [aiVerifyMsg, setAiVerifyMsg] = useState('');
 
+  // Load merged providers on mount and auto-fill API key from local config
+  useEffect(() => {
+    getMergedProviders().then((providers) => {
+      setMergedProviders(providers);
+    });
+  }, []);
+
+  // Once mergedProviders loads, auto-fill API key from local config
+  useEffect(() => {
+    if (aiApiKey) return; // already has a key
+    const providerId = aiProvider;
+    const preset = mergedProviders[providerId];
+    if (preset?.apiKey) {
+      setAiApiKey(preset.apiKey);
+      localStorage.setItem('anthropic_api_key', preset.apiKey);
+      localStorage.setItem(getProviderKeyStorageId(providerId), preset.apiKey);
+    }
+  }, [mergedProviders, aiProvider, aiApiKey]);
+
   const updateAiSetting = (key, value, setter) => {
     setter(value);
     localStorage.setItem(key, value);
     window.dispatchEvent(new CustomEvent('ai-settings-changed'));
   };
 
-  // Apply provider preset: fills baseURL, authStyle, model (not API key)
+  // Apply provider preset: fills baseURL, authStyle, model, and API key from local config
   const applyProviderPreset = (providerId) => {
-    const preset = MODEL_PROVIDERS[providerId];
+    const preset = mergedProviders[providerId];
     if (!preset) return;
     setAiProvider(providerId);
     localStorage.setItem('ai_provider', providerId);
-    updateAiSetting('anthropic_base_url', preset.baseURL, setAiBaseURL);
-    updateAiSetting('anthropic_auth_style_pref', preset.authStyle, setAiAuthStyle);
-    updateAiSetting('anthropic_model', preset.defaultModel, setAiModel);
-    // Load saved API key for this provider
+    updateAiSetting('anthropic_base_url', preset.baseURL || '', setAiBaseURL);
+    updateAiSetting('anthropic_auth_style_pref', preset.authStyle || 'auto', setAiAuthStyle);
+    updateAiSetting('anthropic_model', preset.model || '', setAiModel);
+
+    // Try local config API key first, then localStorage fallback
+    const localKey = preset.apiKey || '';
     const savedKey = localStorage.getItem(getProviderKeyStorageId(providerId)) || '';
-    setAiApiKey(savedKey);
-    localStorage.setItem('anthropic_api_key', savedKey);
+    const key = localKey || savedKey;
+    setAiApiKey(key);
+    if (key) {
+      localStorage.setItem('anthropic_api_key', key);
+      localStorage.setItem(getProviderKeyStorageId(providerId), key);
+    }
     setAiVerifyStatus(null);
     setAiVerifyMsg('');
   };
 
-  // Verify API connectivity
+  // Verify API connectivity via vital-bridge proxy (avoids CORS)
   const verifyApiConnection = async () => {
     setAiVerifyStatus('loading');
-    setAiVerifyMsg('Testing connection...');
+    setAiVerifyMsg('Testing connection via bridge...');
     try {
-      const base = (aiBaseURL || '').trim();
       const apiKey = (aiApiKey || '').trim();
       if (!apiKey) throw new Error('No API key configured');
-      const style = aiAuthStyle === 'apiKey' ? 'apiKey'
-        : aiAuthStyle === 'authToken' ? 'authToken'
-        : base ? 'authToken' : 'apiKey';
-      const headers = { 'Content-Type': 'application/json' };
-      if (style === 'authToken') {
-        headers['Authorization'] = `Bearer ${apiKey}`;
-      } else {
-        headers['x-api-key'] = apiKey;
+
+      // Determine auth style
+      const preset = mergedProviders[aiProvider];
+      let authStyle = aiAuthStyle;
+      if (authStyle === 'auto' && preset) {
+        authStyle = preset.authStyle || 'authToken';
       }
-      // Try to list models (lightweight check)
-      const modelsURL = base ? `${base.replace(/\/$/, '')}/v1/models` : 'https://api.anthropic.com/v1/models';
-      const res = await fetch(modelsURL, { method: 'GET', headers, signal: AbortSignal.timeout(10000) });
-      if (res.ok) {
+
+      const body = JSON.stringify({
+        baseURL: aiBaseURL || '',
+        apiKey,
+        authStyle,
+      });
+
+      const res = await fetch(`${BRIDGE_URL}/proxy/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(15000),
+      });
+
+      const data = await res.json();
+      if (data.ok) {
         setAiVerifyStatus('success');
-        setAiVerifyMsg('Connection verified ✓');
+        setAiVerifyMsg(`Connection verified ✓ (HTTP ${data.status})`);
       } else {
-        const text = await res.text().catch(() => '');
         setAiVerifyStatus('error');
-        setAiVerifyMsg(`HTTP ${res.status}: ${text.slice(0, 80)}`);
+        setAiVerifyMsg(`HTTP ${data.status}: ${data.error || 'Unknown error'}`);
       }
     } catch (err) {
       setAiVerifyStatus('error');
@@ -267,13 +310,13 @@ export function SettingsTab({ started }) {
             onChange={(e) => applyProviderPreset(e.target.value)}
             className="w-full p-2 bg-background border border-foreground/20 rounded-md focus:ring-1 focus:ring-foreground outline-none text-sm"
           >
-            {Object.entries(MODEL_PROVIDERS).map(([id, preset]) => (
+            {Object.entries(mergedProviders).map(([id, preset]) => (
               <option key={id} value={id}>
                 {preset.name} — {preset.description}
               </option>
             ))}
           </select>
-          <p className="text-xs text-foreground/40 mt-1">{MODEL_PROVIDERS[aiProvider]?.description || ''}</p>
+          <p className="text-xs text-foreground/40 mt-1">{mergedProviders[aiProvider]?.description || ''}</p>
         </FormItem>
 
         <FormItem label="API Base URL（可选，第三方代理）">
