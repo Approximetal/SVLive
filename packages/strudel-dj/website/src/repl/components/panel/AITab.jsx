@@ -271,6 +271,19 @@ register('trancegate', (density, seed, length, x) => {
      - \`djembe\` (NOT available).
    - **VERIFIED \`dirt-samples\` KEYS**: \`808\`, \`909\`, \`ade\`, \`amencutup\`, \`arpy\`, \`auto\`, \`bass\`, \`bd\`, \`bend\`, \`birds\`, \`bleep\`, \`blip\`, \`breaks125\`, \`bubble\`, \`can\`, \`casio\`, \`clak\`, \`click\`, \`coins\`, \`cp\`, \`cr\`, \`crow\`, \`d\`, \`dist\`, \`drum\`, \`drumtraks\`, \`east\`, \`electro1\`, \`feel\`, \`feelfx\`, \`fire\`, \`flick\`, \`fm\`, \`future\`, \`gab\`, \`glitch\`, \`gretsch\`, \`gtr\`, \`h\`, \`hand\`, \`hardcore\`, \`haw\`, \`hc\`, \`hh\`, \`hit\`, \`ho\`, \`house\`, \`incoming\`, \`industrial\`, \`insect\`, \`invaders\`, \`jazz\`, \`jungbass\`, \`jungle\`, \`juno\`, \`kurt\`, \`latibro\`, \`linnhats\`, \`made\`, \`mash\`, \`metal\`, \`moog\`, \`mouth\`, \`mp3\`, \`msg\`, \`mt\`, \`newnotes\`, \`noise\`, \`numbers\`, \`oc\`, \`odx\`, \`off\`, \`pad\`, \`padlong\`, \`perc\`, \`peri\`, \`pluck\`, \`popkick\`, \`print\`, \`proc\`, \`rave\`, \`rm\`, \`rs\`, \`sax\`, \`sd\`, \`sequential\`, \`sf\`, \`short\`, \`sid\`, \`sitar\`, \`sn\`, \`space\`, \`speakspell\`, \`speech\`, \`stab\`, \`stomp\`, \`sundance\`, \`tabla\`, \`tech\`, \`techno\`, \`tink\`, \`tok\`, \`toys\`, \`trump\`, \`ul\`, \`v\`, \`voodoo\`, \`wind\`, \`wobble\`, \`world\`, \`xmas\`, \`yeah\`.
 
+
+5. **Vital Synthesizer Presets (SVLive)** — This environment has 2300+ Vital presets for rich sound design.
+
+   **Loading**: \`await vital('Preset Name')\`
+   **Playing**: \`.s("vital_lowercase_name")\` (lowercase, spaces use underscores)
+   Example: \`await vital('Plucked String'); note("c3").s("vital_plucked_string")\`
+
+   **When to use Vital vs samples**: Vital for leads/pads/basses/plucks/bells/FX/textures. Tidal dirt-samples for drums (bd, hh, snare, cp, rim, cr, lt, mt).
+
+   **Tag categories** (2300 presets): bass(324), pluck(184), pad(178), lead(152), keys(142), bell(61), chord(52), fx(32), drum(27), arp(27). Style: warm, dark, bright, ambient, aggressive, cinematic, retro, acid, trap, house, techno, trance, dnb.
+
+   **Recommended presets**: pad→\`DRONE Floating\`, \`Analog Pad\`; pluck→\`Plucked String\`, \`Super Pluck\`; bass→\`Thicccboi 808\`, \`Psytrance Bass\`; bell→\`BELL Koto Bell\`, \`Digital Mallets\`; world→\`Sitar\`, \`PL - Eastern\`; glitch→\`Special Glitch Thing\`.
+
 ## Slider Usage Guide for Maximum Control
 
 Sliders are CRITICAL for live performance. You must provide sliders that allow the user to control the energy and timbre of the track.
@@ -407,6 +420,8 @@ You must output a JSON object with:
     bass
   )._rscope({ color: "cyan", scale: 0.5 })
   \`\`\`
+
+5. **Vital Presets (SVLive)** — Load with \`await vital('Name')\`. Play with \`.s("vital_name")\`. Available: 2300+ presets (bass, pad, lead, pluck, bell, world, fx). Use for synths; keep drums as Tidal samples.
 
 ## Rules
 - Keep changes minimal. Do not rewrite the whole file.
