@@ -300,6 +300,83 @@ async def list_presets(
     }
 
 
+# Load preset tag index at startup
+_preset_tags_data = None
+
+def get_preset_tags():
+    global _preset_tags_data
+    if _preset_tags_data is None:
+        tags_file = Path(__file__).parent / "preset_tags.json"
+        if tags_file.exists():
+            _preset_tags_data = json.loads(tags_file.read_text())
+        else:
+            _preset_tags_data = {"presets": [], "inverted_index": {}, "type_counts": {}, "style_counts": {}}
+    return _preset_tags_data
+
+
+@app.get("/presets/tags")
+async def list_tags():
+    """Return all available tags with counts."""
+    data = get_preset_tags()
+    return {
+        "total_presets": data["total"],
+        "type_counts": data.get("type_counts", {}),
+        "style_counts": data.get("style_counts", {}),
+        "all_tags": sorted(data.get("inverted_index", {}).keys()),
+    }
+
+
+@app.get("/presets/search")
+async def search_presets(
+    q: str = Query(default="", description="Search query: tag names or keywords"),
+    tag: str = Query(default="", description="Comma-separated tags to filter by"),
+    match: str = Query(default="any", description="Match mode: 'any' or 'all' tags"),
+):
+    """Search presets by tags or keywords. Use ?tag=bass,pad for tag filter."""
+    data = get_preset_tags()
+    all_presets = data.get("presets", [])
+    inverted = data.get("inverted_index", {})
+
+    # Filter by tags
+    if tag or q:
+        search_tags = []
+        if tag:
+            search_tags = [t.strip().lower() for t in tag.split(",") if t.strip()]
+        if q:
+            # q can be multiple words
+            search_tags = [t.strip().lower() for t in q.split() if t.strip()]
+
+        if search_tags:
+            if match == "all":
+                # Intersection: preset must have all tags
+                matched_names = None
+                for t in search_tags:
+                    names = set(inverted.get(t, []))
+                    if matched_names is None:
+                        matched_names = names
+                    else:
+                        matched_names &= names
+                matched_names = matched_names or set()
+            else:
+                # Union: preset must have any tag
+                matched_names = set()
+                for t in search_tags:
+                    matched_names.update(inverted.get(t, []))
+
+            presets = [p for p in all_presets if p["name"] in matched_names]
+        else:
+            presets = all_presets
+    else:
+        presets = all_presets
+
+    return {
+        "query": q or tag,
+        "match": match,
+        "count": len(presets),
+        "presets": presets,
+    }
+
+
 @app.post("/load")
 async def load_preset(req: LoadPresetRequest):
     """Load a .vital preset file by path."""
