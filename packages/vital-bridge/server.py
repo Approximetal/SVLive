@@ -246,6 +246,7 @@ class VerifyRequest(BaseModel):
     baseURL: str = ""
     apiKey: str = ""
     authStyle: str = "authToken"
+    model: str = ""
 
 class ExportRequest(BaseModel):
     preset: Optional[str] = None  # preset path (uses current if None)
@@ -669,9 +670,9 @@ async def export_preset(req: ExportRequest):
 @app.post("/proxy/verify")
 async def proxy_verify(req: VerifyRequest):
     """Proxy an API connectivity check — avoids CORS issues in browser.
-    Sends GET /v1/models to the target Anthropic-compatible endpoint."""
+    Tries GET /v1/models first; if 404, falls back to POST /v1/messages."""
     import httpx
-    url = (req.baseURL or "https://api.anthropic.com").rstrip("/") + "/v1/models"
+    base = (req.baseURL or "https://api.anthropic.com").rstrip("/")
     headers = {"Content-Type": "application/json"}
     if req.authStyle == "authToken":
         headers["Authorization"] = f"Bearer {req.apiKey}"
@@ -679,8 +680,26 @@ async def proxy_verify(req: VerifyRequest):
         headers["x-api-key"] = req.apiKey
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # Try model listing first
+            url = f"{base}/v1/models"
             resp = await client.get(url, headers=headers)
-        return {"ok": resp.status_code < 400, "status": resp.status_code, "url": url}
+            if resp.status_code == 404:
+                # Some providers (e.g. DeepSeek) don't expose /v1/models.
+                # Fall back to a trivial messages call as connectivity check.
+                url2 = f"{base}/v1/messages"
+                body = {
+                    "model": req.model or "default",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}],
+                }
+                resp2 = await client.post(url2, headers=headers, json=body)
+                return {
+                    "ok": resp2.status_code < 500,
+                    "status": resp2.status_code,
+                    "url": url2,
+                    "method": "POST",
+                }
+            return {"ok": resp.status_code < 400, "status": resp.status_code, "url": url}
     except Exception as e:
         return {"ok": False, "status": 0, "error": str(e), "url": url}
 

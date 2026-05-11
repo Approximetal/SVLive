@@ -266,6 +266,7 @@ export function SettingsTab({ started }) {
         baseURL: aiBaseURL || '',
         apiKey,
         authStyle,
+        model: aiModel || '',
       });
 
       const res = await fetch(`${BRIDGE_URL}/proxy/verify`, {
