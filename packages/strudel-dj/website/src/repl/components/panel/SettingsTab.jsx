@@ -10,6 +10,7 @@ import { confirmDialog } from '../../util.mjs';
 import { DEFAULT_MAX_POLYPHONY, setMaxPolyphony, setMultiChannelOrbits } from '@strudel/webaudio';
 import cx from '@src/cx.mjs';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
+import { MODEL_PROVIDERS, getProviderKeyStorageId } from '../../ai/modelProviders.js';
 
 // === Reusable Form Components ===
 
@@ -172,10 +173,21 @@ export function SettingsTab({ started }) {
   const canChangeAudioDevice = AudioContext.prototype.setSinkId != null;
 
   // AI API settings from localStorage
+  const [aiProvider, setAiProvider] = useState(() => {
+    const saved = localStorage.getItem('ai_provider');
+    return saved && MODEL_PROVIDERS[saved] ? saved : 'claude-code';
+  });
   const [aiBaseURL, setAiBaseURL] = useState(() => localStorage.getItem('anthropic_base_url') || '');
-  const [aiApiKey, setAiApiKey] = useState(() => localStorage.getItem('anthropic_api_key') || '');
+  const [aiApiKey, setAiApiKey] = useState(() => {
+    const provider = localStorage.getItem('ai_provider') || 'claude-code';
+    const savedKey = localStorage.getItem(getProviderKeyStorageId(provider));
+    if (savedKey) return savedKey;
+    return localStorage.getItem('anthropic_api_key') || '';
+  });
   const [aiAuthStyle, setAiAuthStyle] = useState(() => localStorage.getItem('anthropic_auth_style_pref') || 'auto');
   const [aiModel, setAiModel] = useState(() => localStorage.getItem('anthropic_model') || DEFAULT_ANTHROPIC_MODEL);
+  const [aiVerifyStatus, setAiVerifyStatus] = useState(null); // null | 'loading' | 'success' | 'error'
+  const [aiVerifyMsg, setAiVerifyMsg] = useState('');
 
   const updateAiSetting = (key, value, setter) => {
     setter(value);
@@ -183,10 +195,87 @@ export function SettingsTab({ started }) {
     window.dispatchEvent(new CustomEvent('ai-settings-changed'));
   };
 
+  // Apply provider preset: fills baseURL, authStyle, model (not API key)
+  const applyProviderPreset = (providerId) => {
+    const preset = MODEL_PROVIDERS[providerId];
+    if (!preset) return;
+    setAiProvider(providerId);
+    localStorage.setItem('ai_provider', providerId);
+    updateAiSetting('anthropic_base_url', preset.baseURL, setAiBaseURL);
+    updateAiSetting('anthropic_auth_style_pref', preset.authStyle, setAiAuthStyle);
+    updateAiSetting('anthropic_model', preset.defaultModel, setAiModel);
+    // Load saved API key for this provider
+    const savedKey = localStorage.getItem(getProviderKeyStorageId(providerId)) || '';
+    setAiApiKey(savedKey);
+    localStorage.setItem('anthropic_api_key', savedKey);
+    setAiVerifyStatus(null);
+    setAiVerifyMsg('');
+  };
+
+  // Verify API connectivity
+  const verifyApiConnection = async () => {
+    setAiVerifyStatus('loading');
+    setAiVerifyMsg('Testing connection...');
+    try {
+      const base = (aiBaseURL || '').trim();
+      const apiKey = (aiApiKey || '').trim();
+      if (!apiKey) throw new Error('No API key configured');
+      const style = aiAuthStyle === 'apiKey' ? 'apiKey'
+        : aiAuthStyle === 'authToken' ? 'authToken'
+        : base ? 'authToken' : 'apiKey';
+      const headers = { 'Content-Type': 'application/json' };
+      if (style === 'authToken') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else {
+        headers['x-api-key'] = apiKey;
+      }
+      // Try to list models (lightweight check)
+      const modelsURL = base ? `${base.replace(/\/$/, '')}/v1/models` : 'https://api.anthropic.com/v1/models';
+      const res = await fetch(modelsURL, { method: 'GET', headers, signal: AbortSignal.timeout(10000) });
+      if (res.ok) {
+        setAiVerifyStatus('success');
+        setAiVerifyMsg('Connection verified ✓');
+      } else {
+        const text = await res.text().catch(() => '');
+        setAiVerifyStatus('error');
+        setAiVerifyMsg(`HTTP ${res.status}: ${text.slice(0, 80)}`);
+      }
+    } catch (err) {
+      setAiVerifyStatus('error');
+      setAiVerifyMsg(err.message || 'Connection failed');
+    }
+  };
+
+  // Save API key per provider when it changes
+  const handleApiKeyChange = (value) => {
+    setAiApiKey(value);
+    localStorage.setItem('anthropic_api_key', value);
+    localStorage.setItem(getProviderKeyStorageId(aiProvider), value);
+    setAiVerifyStatus(null);
+    setAiVerifyMsg('');
+    window.dispatchEvent(new CustomEvent('ai-settings-changed'));
+  };
+
   return (
     <div className="text-foreground p-4 space-y-3 w-full overflow-auto" style={{ fontFamily }}>
       {/* === AI API Configuration === */}
       <Section title="AI Configuration" icon="🤖" defaultOpen={!aiApiKey}>
+        {/* Provider preset selector */}
+        <FormItem label="Model Provider">
+          <select
+            value={aiProvider}
+            onChange={(e) => applyProviderPreset(e.target.value)}
+            className="w-full p-2 bg-background border border-foreground/20 rounded-md focus:ring-1 focus:ring-foreground outline-none text-sm"
+          >
+            {Object.entries(MODEL_PROVIDERS).map(([id, preset]) => (
+              <option key={id} value={id}>
+                {preset.name} — {preset.description}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-foreground/40 mt-1">{MODEL_PROVIDERS[aiProvider]?.description || ''}</p>
+        </FormItem>
+
         <FormItem label="API Base URL（可选，第三方代理）">
           <input
             type="text"
@@ -229,14 +318,36 @@ export function SettingsTab({ started }) {
           <input
             type="password"
             value={aiApiKey}
-            onChange={(e) => updateAiSetting('anthropic_api_key', e.target.value, setAiApiKey)}
+            onChange={(e) => handleApiKeyChange(e.target.value)}
             placeholder="sk-ant-... 或代理下发的令牌"
             className="w-full p-2 bg-background border border-foreground/20 rounded-md focus:ring-1 focus:ring-foreground outline-none text-sm"
           />
         </FormItem>
 
+        {/* Verify button */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={verifyApiConnection}
+            disabled={aiVerifyStatus === 'loading'}
+            className={cx(
+              'px-3 py-1.5 rounded text-xs border transition-colors',
+              aiVerifyStatus === 'loading'
+                ? 'border-white/10 text-foreground/30 cursor-wait'
+                : 'border-foreground/20 text-foreground/60 hover:border-foreground/40 hover:text-foreground/80'
+            )}
+          >
+            {aiVerifyStatus === 'loading' ? '⏳ Verifying...' : '🔍 Verify Connection'}
+          </button>
+          {aiVerifyStatus === 'success' && (
+            <span className="text-xs text-green-400">{aiVerifyMsg}</span>
+          )}
+          {aiVerifyStatus === 'error' && (
+            <span className="text-xs text-red-400">{aiVerifyMsg}</span>
+          )}
+        </div>
+
         <p className="text-xs text-foreground/50 leading-relaxed">
-          也可在 <code className="rounded bg-lineHighlight px-1">website/public/anthropic.provider.json</code> 里配置，复制 example 文件改名即可。
+          API keys are stored locally in your browser. Switch providers via the dropdown above.
         </p>
       </Section>
 

@@ -28,3 +28,4 @@ Thumbs.db
 .env
 .env.local
 README.zh.md
+packages/strudel-dj/website/public/anthropic.provider.json
