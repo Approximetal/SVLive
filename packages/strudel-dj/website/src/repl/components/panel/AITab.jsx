@@ -150,6 +150,12 @@ function createAnthropicClient(secret, baseURL, authStylePref) {
       : base
         ? 'authToken'
         : 'apiKey';
+  // Diagnostic: log masked config to help debug auth issues
+  const masked = sec ? `${sec.slice(0, 6)}...${sec.slice(-4)}` : '(empty)';
+  console.info(`[AI] Auth: ${style} | base=${base || '(default)'} | key=${masked} | length=${sec.length}`);
+  if (!sec) {
+    console.warn('[AI] ⚠️  No API key configured — requests will fail with 401');
+  }
   return new Anthropic({
     baseURL: base || undefined,
     ...(style === 'authToken' ? { authToken: sec } : { apiKey: sec }),
@@ -573,10 +579,17 @@ export function AITab({ context }) {
       if (file && typeof file === 'object') {
         // baseURL / auth always sync from file
         if (typeof file.baseURL === 'string' && file.baseURL.trim()) base = file.baseURL.trim();
+        const lsKey = secret;
         if (typeof file.authToken === 'string' && file.authToken.trim()) secret = file.authToken.trim();
         else if (typeof file.apiKey === 'string' && file.apiKey.trim()) secret = file.apiKey.trim();
         if (file.authStyle === 'authToken') pref = 'authToken';
         else if (file.authStyle === 'apiKey') pref = 'apiKey';
+        // Diagnostic
+        if (secret !== lsKey) {
+          const maskedOld = lsKey ? `${lsKey.slice(0, 4)}...${lsKey.slice(-4)}` : '(empty)';
+          const maskedNew = `${secret.slice(0, 6)}...${secret.slice(-4)}`;
+          console.info(`[AI] Key source: provider.json (${maskedNew}) overrides localStorage (${maskedOld})`);
+        }
         // Model: only use file as fallback when user hasn't explicitly set one
         if (!model) {
           if (typeof file.model === 'string' && file.model.trim()) model = file.model.trim();
