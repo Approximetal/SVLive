@@ -78,76 +78,56 @@ const DEFAULT_TERMS = {
  * Returns enriched terms object (superset of the regex analyzer's output).
  */
 export async function translatePrompt(client, userPrompt, modelId) {
-  const response = await client.beta.messages.create({
-    model: modelId || 'claude-sonnet-4-6',
+  // Only use structured output on official Anthropic API; third-party providers
+  // (DeepSeek, Kimi, yxai88, etc.) don't support the beta endpoint.
+  const resolvedModel = modelId || 'claude-sonnet-4-6';
+  const isAnthropicOfficial = !client.baseURL || client.baseURL.includes('api.anthropic.com');
+
+  if (isAnthropicOfficial) {
+    // Official Anthropic: use structured outputs for reliable JSON extraction
+    const response = await client.beta.messages.create({
+      model: resolvedModel,
+      max_tokens: 600,
+      betas: ['structured-outputs-2025-11-13'],
+      system: TRANSLATOR_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+      output_format: {
+        type: 'json_schema',
+        schema: MUSIC_TERMS_SCHEMA,
+      },
+    });
+    const block = response.content?.[0];
+    if (!block) throw new Error('Translator returned empty content');
+    let result;
+    if (block.input != null && typeof block.input === 'object') {
+      result = block.input;
+    } else {
+      result = JSON.parse(block.text || '{}');
+    }
+    return normalizeTerms(result, userPrompt);
+  }
+
+  // Third-party provider: use regular messages.create() with JSON instruction
+  const response = await client.messages.create({
+    model: resolvedModel,
     max_tokens: 600,
-    betas: ['structured-outputs-2025-11-13'],
-    system: TRANSLATOR_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userPrompt }],
-    output_format: {
-      type: 'json_schema',
-      schema: MUSIC_TERMS_SCHEMA,
-    },
+    system: TRANSLATOR_SYSTEM_PROMPT + '\n\nYou MUST respond with ONLY a JSON object, no other text.',
+    messages: [{ role: 'user', content: `${userPrompt}\n\nRespond with a JSON object following the schema above.` }],
   });
-
-  const block = response.content?.[0];
-  if (!block) throw new Error('Translator returned empty content');
-
-  // Try structured input first, then text fallback
+  const raw = response.content?.[0]?.text || '';
   let result;
-  if (block.input != null && typeof block.input === 'object') {
-    result = block.input;
-  } else {
-    let raw = String(block.text || '').trim();
-    // Guard against garbled/binary responses
-    if (!raw || raw.length < 3 || /^[\x00-\x08\x0b\x0c\x0e-\x1f]+/.test(raw)) {
-      throw new Error(`Translator returned unparseable content (${raw.length} bytes)`);
-    }
-    // Try to extract JSON from markdown fences (anywhere in text, not just start/end)
-    const fenceRe = /```(?:json|javascript|js)?\s*\r?\n?([\s\S]*?)\r?\n?```/i;
-    const fenceMatch = fenceRe.exec(raw);
-    let candidate = fenceMatch ? fenceMatch[1].trim() : raw;
-    // Also try to find a raw JSON object if it's embedded in prose
-    if (!fenceMatch) {
-      const jsonObjRe = /\{[\s\S]*"genre"[\s\S]*\}/;
-      const jsonMatch = jsonObjRe.exec(raw);
-      if (jsonMatch) candidate = jsonMatch[0];
-    }
-    try {
-      result = JSON.parse(candidate);
-    } catch {
-      // Model returned prose instead of JSON — extract what we can with regex
-      console.warn('[MusicTranslator] Structured output failed, attempting regex extraction from:', raw.slice(0, 200));
-      result = extractFromText(raw);
-    }
+  try {
+    result = JSON.parse(raw);
+  } catch {
+    // Try extracting JSON from markdown or text
+    const jsonRe = /\{[\s\S]*"genre"[\s\S]*\}/;
+    const match = jsonRe.exec(raw);
+    result = match ? JSON.parse(match[0]) : DEFAULT_TERMS;
   }
+  return normalizeTerms(result, userPrompt);
+}
 
-  /**
-   * Fallback: when the model ignores the JSON schema and returns natural language,
-   * try to extract key fields with regex.
-   */
-  function extractFromText(text) {
-    const lower = text.toLowerCase();
-    const genreMatch = text.match(/"genre"\s*:\s*"(\w+)"/i)
-      || text.match(/genre[：:]\s*["']?(\w+)["']?/i)
-      || text.match(/\b(hyperpop|house|techno|trance|dnb|dubstep|trap|lofi|ambient|synthwave|jazz|classical|funk|hiphop|reggae|latin)\b/i);
-    const bpmMatch = text.match(/"bpm"\s*:\s*(\d{2,3})/i)
-      || text.match(/bpm[：:]\s*(\d{2,3})/i)
-      || text.match(/\b(\d{2,3})\s*bpm\b/i);
-    const keyMatch = text.match(/"key"\s*:\s*"([A-G][#b]?\s*:\s*\w+)"/i)
-      || text.match(/key[：:]\s*["']?([A-G][#b]?\s*:\s*\w+)["']?/i);
-    return {
-      genre: genreMatch ? genreMatch[1].toLowerCase() : DEFAULT_TERMS.genre,
-      bpm: bpmMatch ? parseInt(bpmMatch[1]) : null,
-      key: keyMatch ? keyMatch[1].replace(/\s+/g, '') : null,
-      mood: ['energetic'],
-      instruments: ['bass', 'lead', 'pad', 'drum'],
-      soundTags: ['warm'],
-      description: text.slice(0, 80),
-    };
-  }
-
-  // Merge with defaults for safety
+function normalizeTerms(result, userPrompt) {
   return {
     genre: result.genre || DEFAULT_TERMS.genre,
     bpm: (typeof result.bpm === 'number' && result.bpm >= 40 && result.bpm <= 300)

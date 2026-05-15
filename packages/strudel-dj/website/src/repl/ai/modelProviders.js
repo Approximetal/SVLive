@@ -90,3 +90,96 @@ export function getProviderKeyStorageId(providerId) {
 export function getProvider(id) {
   return BUILTIN_PROVIDERS[id] || null;
 }
+
+/**
+ * Dynamically fetch available models from a provider's API.
+ * Returns a sorted array of model ID strings, or null on failure.
+ * Falls back gracefully — use getStaticModelSuggestions() if fetch fails.
+ */
+export async function fetchProviderModels(baseURL, apiKey, authStyle) {
+  if (!baseURL || !apiKey) return null;
+
+  const base = baseURL.replace(/\/+$/, '');
+  const url = `${base}/v1/models`;
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (authStyle === 'authToken') {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    } else {
+      headers['x-api-key'] = apiKey;
+    }
+
+    const resp = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!resp.ok) return null;
+
+    const json = await resp.json();
+    // Support both Anthropic format { data: [{ id }] } and OpenAI format { data: [{ id }] }
+    const items = json.data || json.models || [];
+    if (!items.length) return null;
+
+    const modelIds = items
+      .map(m => m.id || m.name || '')
+      .filter(Boolean)
+      .sort();
+
+    return modelIds;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Static model suggestions (fallback when dynamic fetch is unavailable).
+ * Covers Anthropic official, yxai88, and common third-party providers.
+ */
+export function getStaticModelSuggestions(providerId) {
+  // Provider-specific models
+  const providerModels = {
+    deepseek: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3-1'],
+    kimi: ['kimi-for-coding', 'kimi-k2.6-thinking', 'kimi-k2.6'],
+  };
+
+  if (providerModels[providerId]) {
+    return providerModels[providerId];
+  }
+
+  // Default: full Anthropic Claude model list
+  return [
+    'claude-sonnet-4-6',
+    'claude-sonnet-4-6-thinking',
+    'claude-sonnet-4-5',
+    'claude-sonnet-4-5-20250929',
+    'claude-sonnet-4-5-20250929-thinking',
+    'claude-sonnet-4-20250514',
+    'claude-opus-4-7',
+    'claude-opus-4-7-thinking',
+    'claude-opus-4-7-low',
+    'claude-opus-4-7-medium',
+    'claude-opus-4-7-high',
+    'claude-opus-4-7-xhigh',
+    'claude-opus-4-7-max',
+    'claude-opus-4-6',
+    'claude-opus-4-6-thinking',
+    'claude-opus-4-6-low',
+    'claude-opus-4-6-medium',
+    'claude-opus-4-6-high',
+    'claude-opus-4-6-xhigh',
+    'claude-opus-4-6-max',
+    'claude-opus-4-5-20251101',
+    'claude-opus-4-5-20251101-thinking',
+    'claude-opus-4-1-20250805',
+    'claude-opus-4-20250514',
+    'claude-haiku-4-5-20251001',
+    'claude-haiku-4-5-20251001-thinking',
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-sonnet-20240620',
+    'claude-3-5-haiku-20241022',
+    'claude-3-opus-20240229',
+    'claude-3-sonnet-20240229',
+    'claude-3-haiku-20240307',
+  ];
+}

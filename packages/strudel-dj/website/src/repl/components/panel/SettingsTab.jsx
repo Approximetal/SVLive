@@ -10,7 +10,7 @@ import { confirmDialog } from '../../util.mjs';
 import { DEFAULT_MAX_POLYPHONY, setMaxPolyphony, setMultiChannelOrbits } from '@strudel/webaudio';
 import cx from '@src/cx.mjs';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/16/solid';
-import { BUILTIN_PROVIDERS, getMergedProviders, getProviderKeyStorageId } from '../../ai/modelProviders.js';
+import { BUILTIN_PROVIDERS, getMergedProviders, getProviderKeyStorageId, fetchProviderModels, getStaticModelSuggestions } from '../../ai/modelProviders.js';
 
 // === Reusable Form Components ===
 
@@ -100,25 +100,6 @@ function Section({ title, defaultOpen = false, children, icon }) {
 // === Constants ===
 
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const ANTHROPIC_MODEL_SUGGESTIONS = [
-  DEFAULT_ANTHROPIC_MODEL,
-  'claude-sonnet-4-5',
-  'claude-sonnet-4-6-thinking',
-  'claude-sonnet-4-5-20250929',
-  'claude-opus-4-7',
-  'claude-opus-4-7-thinking',
-  'claude-opus-4-6',
-  'claude-opus-4-6-thinking',
-  'claude-opus-4-5-20251101',
-  'claude-haiku-4-5-20251001',
-  'claude-3-5-sonnet-20241022',
-  'claude-3-5-haiku-20241022',
-  'claude-3-opus-20240229',
-  'deepseek-v4-pro',
-  'deepseek-v4',
-  'kimi-for-coding',
-  'kimi-k2.6',
-];
 
 const themeOptions = Object.fromEntries(Object.keys(themes).map((k) => [k, k]));
 const fontFamilyOptions = {
@@ -198,6 +179,37 @@ export function SettingsTab({ started }) {
   const [aiModel, setAiModel] = useState(() => localStorage.getItem('anthropic_model') || DEFAULT_ANTHROPIC_MODEL);
   const [aiVerifyStatus, setAiVerifyStatus] = useState(null); // null | 'loading' | 'success' | 'error'
   const [aiVerifyMsg, setAiVerifyMsg] = useState('');
+  const [dynamicModels, setDynamicModels] = useState(null); // null = not fetched, [] = failed, [...] = success
+  const [modelsLoading, setModelsLoading] = useState(false);
+
+  // Fetch models from provider API when settings change
+  const refreshModels = useCallback(async () => {
+    const apiKey = (aiApiKey || '').trim();
+    const baseURL = (aiBaseURL || '').trim();
+    if (!apiKey || !baseURL) {
+      setDynamicModels(null);
+      return;
+    }
+    setModelsLoading(true);
+    try {
+      const models = await fetchProviderModels(baseURL, apiKey, aiAuthStyle);
+      setDynamicModels(models || []);
+    } catch {
+      setDynamicModels([]);
+    } finally {
+      setModelsLoading(false);
+    }
+  }, [aiBaseURL, aiApiKey, aiAuthStyle]);
+
+  // Auto-fetch models when provider changes
+  useEffect(() => {
+    setDynamicModels(null);
+    const base = (aiBaseURL || '').trim();
+    const key = (aiApiKey || '').trim();
+    if (base && key) {
+      refreshModels();
+    }
+  }, [aiProvider, aiBaseURL]);
 
   // Load merged providers on mount and auto-fill API key from local config
   useEffect(() => {
@@ -205,6 +217,39 @@ export function SettingsTab({ started }) {
       setMergedProviders(providers);
     });
   }, []);
+
+  // Persist the default provider to localStorage on first mount if nothing is saved.
+  // Without this, AITab falls back to anthropic.provider.json (yxai88) even though
+  // Settings visually shows "DeepSeek" as the selected provider.
+  useEffect(() => {
+    const hasProvider = !!localStorage.getItem('ai_provider');
+    const hasBaseURL = !!localStorage.getItem('anthropic_base_url');
+    if (hasProvider && hasBaseURL) return; // User already configured something
+    const providerId = aiProvider; // 'deepseek' by default (from useState initializer)
+    const preset = BUILTIN_PROVIDERS[providerId];
+    if (!preset) return;
+    if (!hasProvider) {
+      localStorage.setItem('ai_provider', providerId);
+    }
+    if (!hasBaseURL && preset.baseURL) {
+      localStorage.setItem('anthropic_base_url', preset.baseURL);
+    }
+    const hasModel = !!localStorage.getItem('anthropic_model');
+    if (!hasModel && preset.model) {
+      localStorage.setItem('anthropic_model', preset.model);
+    }
+    const hasAuthStyle = !!localStorage.getItem('anthropic_auth_style_pref');
+    if (!hasAuthStyle && preset.authStyle) {
+      localStorage.setItem('anthropic_auth_style_pref', preset.authStyle);
+    }
+    // Don't overwrite API key if user already has one
+    const hasKey = !!localStorage.getItem('anthropic_api_key');
+    if (!hasKey && preset.apiKey) {
+      localStorage.setItem('anthropic_api_key', preset.apiKey);
+    }
+    // Dispatch so AITab picks up the change
+    window.dispatchEvent(new CustomEvent('ai-settings-changed'));
+  }, [aiProvider]); // Only depend on aiProvider, use BUILTIN_PROVIDERS directly
 
   // Once mergedProviders loads, auto-fill API key from local config
   useEffect(() => {
@@ -343,19 +388,38 @@ export function SettingsTab({ started }) {
         </FormItem>
 
         <FormItem label="模型 ID">
-          <input
-            type="text"
-            value={aiModel}
-            onChange={(e) => updateAiSetting('anthropic_model', e.target.value, setAiModel)}
-            list="settings-model-suggestions"
-            placeholder={DEFAULT_ANTHROPIC_MODEL}
-            className="w-full p-2 bg-background border border-foreground/20 rounded-md focus:ring-1 focus:ring-foreground outline-none font-mono text-sm"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={aiModel}
+              onChange={(e) => updateAiSetting('anthropic_model', e.target.value, setAiModel)}
+              list="settings-model-suggestions"
+              placeholder={DEFAULT_ANTHROPIC_MODEL}
+              className="flex-1 p-2 bg-background border border-foreground/20 rounded-md focus:ring-1 focus:ring-foreground outline-none font-mono text-sm"
+            />
+            <button
+              onClick={refreshModels}
+              disabled={modelsLoading}
+              className="px-2 py-1 bg-background border border-foreground/20 rounded-md text-xs text-foreground/60 hover:text-foreground hover:border-foreground/40 disabled:opacity-30 shrink-0"
+              title="Fetch available models from provider API"
+            >
+              {modelsLoading ? '⏳' : '🔄'}
+            </button>
+          </div>
           <datalist id="settings-model-suggestions">
-            {ANTHROPIC_MODEL_SUGGESTIONS.map((id) => (
+            {(dynamicModels && dynamicModels.length > 0
+              ? dynamicModels
+              : getStaticModelSuggestions(aiProvider)
+            ).map((id) => (
               <option key={id} value={id} />
             ))}
           </datalist>
+          {dynamicModels !== null && dynamicModels.length === 0 && (
+            <p className="text-xs text-yellow-400/60 mt-1">⚠️ 无法从 API 拉取模型列表，使用内置建议</p>
+          )}
+          {dynamicModels !== null && dynamicModels.length > 0 && (
+            <p className="text-xs text-green-400/60 mt-1">✅ 已从 API 拉取 {dynamicModels.length} 个模型</p>
+          )}
         </FormItem>
 
         <FormItem label="API Key / 第三方令牌">

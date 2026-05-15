@@ -29,3 +29,15 @@ Thumbs.db
 .env.local
 README.zh.md
 packages/strudel-dj/website/src/repl/ai/modelProviders.local.json
+
+# === Docs (plan files, don't commit) ===
+docs/*.md
+!docs/CLAUDE.md
+
+# === Vital Bridge runtime files ===
+packages/vital-bridge/essentia_cache/
+packages/vital-bridge/llm_logs/
+packages/vital-bridge/preset_tags.json
+
+# === Misc ===
+doc.json

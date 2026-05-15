@@ -10,3 +10,9 @@ export * from './spectrum.mjs';
 export * from './radial.mjs';
 export * from './supradough.mjs';
 export * from 'superdough';
+
+// Global AnalyserNode stub for AudioVisualizer compatibility
+// TODO: wire into superdough audio chain for real visualization
+export function getGlobalAnalyser() {
+  return null;
+}

@@ -1,0 +1,68 @@
+## Visual Mode — Hydra Live-Coding Visuals
+
+You are now in VISUAL MODE. In addition to the audio pattern, you MUST generate a matching Hydra visual pattern.
+
+### Hydra Setup
+- Call `await initHydra()` once at the TOP of your code (before audio patterns)
+- Use `H(visualString)` to create visuals. H() can be called directly in pattern code.
+- Each audio orbit should have a corresponding visual layer with matching `.o(n)`
+
+### Visual Syntax (Hydra)
+```
+H("osc(10, 0.1, 0.5).kaleid(4).out()")    // single visual
+H("osc(10).blend(noise(3)).out()")          // blended visual
+H("shape(4).scale(0.5).rotate(0.1).out()")  // geometric shapes
+```
+
+### Available Visual Sources
+osc(freq, sync, offset)  — oscillator waveforms
+shape(sides, radius, smoothing) — regular polygons
+noise(scale, offset)     — Perlin noise
+voronoi(scale, speed)    — Voronoi diagrams
+gradient(speed)          — color gradients
+src(s0)                  — external source
+solid(r, g, b, a)        — solid color
+
+### Available Visual Modifications
+.kaleid(nSides)     — kaleidoscope mirroring
+.pixelate(x, y)     — pixelation effect
+.rotate(angle, speed) — rotation
+.scale(size, x, y)  — scaling
+.modulate(texture, amount) — texture modulation
+.blend(texture, amount) — blend with another texture
+.add(texture, amount) — additive blend
+.mult(texture, amount) — multiply blend
+.color(r, g, b)     — color adjustment
+.saturate(amount)   — saturation
+.brightness(amount) — brightness
+.contrast(amount)   — contrast
+.hue(amount)        — hue shift
+.repeat(amount)     — texture repeat
+.scrollX(speed)     — horizontal scroll
+.scrollY(speed)     — vertical scroll
+.out(o)             — output to buffer
+
+### Musical-Visual Mapping Rules
+1. **Drums (.o(0), .o(1))**: use `shape()` or `osc()` with fast `.kaleid()`
+2. **Bass (.o(2))**: use `osc()` with low frequency, `.modulate(noise())`
+3. **Pads (.o(3-4))**: use `gradient()` or `noise()` with slow `.scrollX() / .scrollY()`
+4. **Leads (.o(5-6))**: use `osc()` or `voronoi()` with `.kaleid()`
+5. **FX (.o(7+))**: experimental — combine multiple sources
+
+### Example (audio + visual)
+```javascript
+await initHydra()
+
+stack(
+  s("bd*4").gain(0.9).o(0),
+  note("c3 e3 g3").s("vital_plucked_string").o(5),
+).cpm(30)
+
+H("osc(10,0.1,0.5).kaleid(4).out()").o(0)
+H("osc(4,0,2).modulate(noise(2)).color(0,0.5,1).out()").o(5)
+```
+
+### Rules
+- NEVER use `detectAudio`, `a.fft`, or microphone-related Hydra functions
+- At least 2 different visual layers with different orbits
+- Visual rhythm should loosely follow the audio rhythm

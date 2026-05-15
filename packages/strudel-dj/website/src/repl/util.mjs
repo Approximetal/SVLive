@@ -96,7 +96,29 @@ export function loadModules() {
     modules = modules.concat([import('@strudel/midi'), import('@strudel/osc')]);
   }
 
-  return evalScope(settingPatterns, ...modules);
+  // Explicitly load vital function into eval scope for AI-generated code.
+  // vital is exported from superdough → re-exported by @strudel/webaudio,
+  // but Vite's tree-shaking may drop it if no static import references it.
+  // We extract it explicitly from the already-imported @strudel/webaudio.
+  const vitalModule = import('@strudel/webaudio').then(mod => {
+    const exports = {};
+    const vitalKeys = Object.keys(mod).filter(k => k.startsWith('vital') || k === 'setVitalBridge');
+    if (vitalKeys.length === 0) {
+      console.warn('[util] vital not found in @strudel/webaudio exports. Total keys:', Object.keys(mod).length);
+      console.warn('[util] First 20 keys:', Object.keys(mod).slice(0, 20));
+    } else {
+      console.info('[util] vital exports found:', vitalKeys);
+    }
+    for (const key of vitalKeys) {
+      exports[key] = mod[key];
+    }
+    return exports;
+  }).catch(err => {
+    console.warn('[util] @strudel/webaudio vital extract failed:', err.message);
+    return {};
+  });
+
+  return evalScope(settingPatterns, vitalModule, ...modules);
 }
 // confirm dialog is a promise in webkit and a boolean in other browsers... normalize it to be a promise everywhere
 export function confirmDialog(msg) {

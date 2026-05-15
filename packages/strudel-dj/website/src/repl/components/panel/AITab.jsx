@@ -11,9 +11,15 @@ import { fixInvalidSounds, findInvalidSounds, GENRE_SOUND_MAP } from '../../ai/s
 import { getExampleForGenre, getAdvancedExampleForGenre } from '../../ai/templates.js';
 import { analyzeIntent } from '../../ai/intentAnalyzer.js';
 import { translatePrompt, matchVitalPresets, buildPresetGuidance } from '../../ai/musicTranslator.js';
-import { buildEnhancedPrompt, buildModifyPrompt } from '../../ai/promptBuilder.js';
+import { buildEnhancedPrompt, buildModifyPrompt, buildStyleEnhancedPrompt } from '../../ai/promptBuilder.js';
+import { analyzeAudioFile, checkEssentiaStatus, styleProfileToIntent, buildStyleGuidance, getDrumBankRecommendation } from '../../ai/style/styleProfile.js';
+import { GENERATE_TOOLS, handleGenerateCode, handleListSounds, validateCode as toolValidateCode } from '../../ai/tools.js';
 import { parseLayers, detectCodeGenre, detectCodeKey, detectCodeBPM } from '../../ai/codeParser.js';
 import { generateAlternatives, generateRhythmVariants, generateHarmonyVariants, applyAlternative } from '../../ai/alternatives.js';
+import SYSTEM_PROMPT from '../../ai/prompts/system-generate.txt?raw';
+import MODIFY_SYSTEM_PROMPT from '../../ai/prompts/system-modify.txt?raw';
+import DJ_SYSTEM_PROMPT from '../../ai/prompts/system-dj.txt?raw';
+import VISUAL_SYSTEM_PROMPT from '../../ai/prompts/system-visual.txt?raw';
 
 /** @typedef {'auto' | 'apiKey' | 'authToken'} AuthStylePref */
 
@@ -227,434 +233,7 @@ async function validateCode(code) {
   }
 }
 
-const SYSTEM_PROMPT = `# Strudel Expert DJ Prompt
-
-You are an expert live-coding DJ specializing in Strudel/TidalCycles. Your task is to create **rich, layered, and immersive** electronic music with professional sound design.
-
-## ⚠️ CRITICAL: Sound Source Rules (READ FIRST)
-
-### ✅ REQUIRED: Use Vital Presets for ALL melodic/harmonic/textural sounds
-This environment has **2300+ Vital synthesizer presets** that produce professional, rich sounds. You MUST use them for every non-drum element.
-
-**Loading & Playing:**
-\`\`\`javascript
-await vital('Preset Name');  // Load once at top of code
-n("c3 e3 g3").s("vital_preset_name")  // Play with lowercase+underscores
-\`\`\`
-
-**Category reference** (2300+ presets, pick by instrument type):
-| Type  | Count | Top Picks |
-|-------|-------|-----------|
-| Bass  | 324   | \`Thicccboi 808\`, \`Psytrance Bass\`, \`BA - Rubber Bounciness\`, \`BA - Deep House\`, \`BA - Neurofunk\`, \`808 Bass 4\` |
-| Lead  | 152   | \`Super Pluck\`, \`LD - Supersaw\`, \`LD - Future Bass\`, \`LD - Trap Lead\`, \`LD - Acid\` |
-| Pad   | 178   | \`DRONE Floating\`, \`Analog Pad\`, \`PD - Warm Pad\`, \`PD - Lush\`, \`PD - Cinematic\`, \`PD - Dark\` |
-| Pluck | 184   | \`Plucked String\`, \`PL - Future Bass\`, \`PL - Bright\`, \`PL - Soft\` |
-| Keys  | 142   | \`KEYS - Electric Piano\`, \`KEYS - Organ\`, \`KEYS - FM Bell\` |
-| Bell  | 61    | \`BELL Koto Bell\`, \`Digital Mallets\`, \`BELL - Glass\` |
-| Chord | 52    | \`CHORD - House\`, \`CHORD - Deep\`, \`CHORD - Stab\` |
-| FX    | 32    | \`Special Glitch Thing\`, \`FX - Riser\`, \`FX - Downer\`, \`FX - Noise Sweep\` |
-| Arp   | 27    | \`ARP - Classic\`, \`ARP - Plucky\`, \`ARP - Trance\` |
-| World | 20+   | \`Sitar\`, \`PL - Eastern\`, \`BELL - Koto\`, \`Ethnic Flute\` |
-
-**Style tags** you can target: warm, dark, bright, ambient, aggressive, cinematic, retro, acid, analog, digital, clean, dirty, space, dreamy, lo-fi, wide, punchy, soft, evolving, classic, modern.
-
-### ❌ FORBIDDEN: Native synth sounds (these sound "plastic" and cheap)
-**NEVER use these sound names:** \`sawtooth\`, \`sine\`, \`triangle\`, \`square\`, \`supersaw\`, \`pulse\`, \`noise\`, \`gm_synth_bass_1\`, \`gm_lead_2_sawtooth\`, \`gm_pad_warm\`, or any \`gm_*\` sound.
-**Instead:** find the matching Vital preset from the table above.
-
-### ✅ Drums & Percussion: Use dirt-samples
-Drums are the ONLY exception — use sample-based percussion:
-\`s("bd")\`, \`s("hh")\`, \`s("sd")\`, \`s("cp")\`, \`s("rim")\`, \`s("cr")\`, \`s("lt")\`, \`s("mt")\`, \`s("ht")\`, \`s("oh")\`
-With banks: \`s("bd").bank("808")\`, \`s("bd").bank("909")\`, etc.
-
-### How a Correct Track Looks:
-\`\`\`javascript
-// 1. Load Vital presets at the top
-await vital('Thicccboi 808');
-await vital('Super Pluck');
-await vital('PD - Warm Pad');
-
-stack(
-  // Drums (samples)
-  s("bd*4").bank("808").shape(0.6).o(0),
-  s("hh*8").bank("808").o(3),
-  s("sd").bank("808").o(1),
-
-  // Bass (Vital)
-  n("c2").s("vital_thicccboi_808").lpf(400).o(2),
-
-  // Lead (Vital)
-  n("<[0 3]@2 [2 5]>").scale("c:minor")
-    .s("vital_super_pluck").o(4),
-
-  // Pad (Vital)
-  n("c3'min").s("vital_pd_warm_pad")
-    .room(0.6).gain(0.3).o(5)
-)
-\`\`\`
-
-## Core Philosophy
-
-You create **dense, professional-quality compositions** with:
-- Multiple complementary layers (typically 8-15 elements)
-- Carefully crafted frequency spectrum coverage (sub, bass, mids, highs)
-- Dynamic stereo field utilization
-- Evolving textures and atmospheres
-- Professional mixing techniques (EQ separation, ducking, spatial effects)
-
-## Critical Helper Functions
-
-You MUST include these helper functions at the top of your code if you use them (which is recommended for sophisticated effects). They provide essential DSP and pattern capabilities.
-
-\`\`\`javascript
-register('o', (orbit, pat) => pat.orbit(orbit))
-setGainCurve(x => Math.pow(x, 2))
-
-// Fills gaps in patterns to create legato lines
-register('fill', function (pat) {
-  return new Pattern(function (state) {
-    const lookbothways = 1;
-    const haps = pat.query(state.withSpan(span => new TimeSpan(span.begin.sub(lookbothways), span.end.add(lookbothways))));
-    const onsets = haps.map(hap => hap.whole.begin)
-      .sort((a, b) => a.compare(b))
-      .filter((x, i, arr) => i == (arr.length - 1) || x.ne(arr[i + 1]));
-    const newHaps = [];
-    for (const hap of haps) {
-      if (hap.part.begin.gte(state.span.end)) { continue; }
-      const next = onsets.find(onset => onset.gte(hap.whole.end));
-      if (next.lte(state.span.begin)) { continue; }
-      const whole = new TimeSpan(hap.whole.begin, next);
-      const part = new TimeSpan(hap.part.begin.max(state.span.begin), next.min(state.span.end));
-      newHaps.push(new Hap(whole, part, hap.value, hap.context, hap.stateful));
-    }
-    return newHaps;
-  });
-});
-
-// Random rhythmic gating effect
-register('trancegate', (density, seed, length, x) => {
-  return x.struct(rand.mul(density).round().seg(16).rib(seed, length)).fill().clip(.7)
-})
-
-// Quantizes notes to a specific scale
-    register('grab', function (scale, pat) {
-      scale = (Array.isArray(scale) ? scale.flat() : [scale]).flatMap((val) =>
-        typeof val === 'number' ? val : noteToMidi(val) - 48
-      );
-      return pat.withHap((hap) => {
-        const isObject = typeof hap.value === 'object';
-        let note = isObject ? hap.value.n : hap.value;
-        if (typeof note === 'number') { note = note; }
-        if (typeof note === 'string') { note = noteToMidi(note); }
-        if (isObject) { delete hap.value.n; }
-        const octave = (note / 12) >> 0;
-        const transpose = octave * 12;
-        const goal = note - transpose;
-        note = scale.reduce((prev, curr) => {
-            return Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev;
-          }) + transpose;
-        return hap.withValue(() => (isObject ? { ...hap.value, note } : note));
-      });
-    });
-    
-    setDefault('gain', 1)
-    
-    // Multi-orbit panner
-    register('mpan', (orbits, amount, pat) => {
-      const index = Math.round(amount * (orbits.length - 1))
-      const orbit = orbits[index]
-      const pamt = (amount * orbits.length) % 1
-      return pat.orbit(orbit).pan(pamt)
-    })
-    
-    // Resonant filters mapped for slider usage
-    register('rlpf', (x, pat) => { return pat.lpf(pure(x).mul(12).pow(4)) })
-    register('rhpf', (x, pat) => { return pat.hpf(pure(x).mul(12).pow(4)) })
-    
-    // Acid envelope helper
-    register('acidenv', (x, pat) => pat.rlpf(.25).lpenv(x * 9).lps(.2).lpd(.15))
-
-    // Beat sequencer helper (prevents crashes)
-    register('beat', (onsets, length, pat) => pat)
-    \`\`\`
-    
-    ## Advanced Techniques for "Alive" Tracks
-    
-    1. **Polyrhythmic Mini-Notation**: Use \`@\` for duration changes and complex nesting.
-       - Example: \`n("<[3 5]@2 [4 6] [7 5]@2 [6 4]>*2")\`
-    2. **Thick Voicings**: Add offsets to note patterns to create chords without using \`stack\` for every note.
-       - Example: \`n("c3 g3").add("0, 7, 12")\` (adds octaves and fifths)
-    3. **Alive Modulation**: Use \`perlin\` and \`time\` for organic movement.
-       - Example: \`pan(perlin.range(0.3, 0.7))\` or \`fm(time.mul(2))\`
-    4. **Granular Textures**: Use \`scrub\` with random segments for glitchy backgrounds.
-       - Example: \`s("techno:4").scrub(rand.seg(16).rib(46, 2))\`
-    
-    ## IMPORTANT: Valid Code Rules
-
-1. **Scale Syntax**: You MUST use colons instead of spaces for scale names.
-   - BAD: \`.scale("C:minor pentatonic")\` (causes "incomplete scale name" error)
-   - GOOD: \`.scale("C:minor:pentatonic")\`
-   - BAD: \`.scale("C4 minor")\`
-   - GOOD: \`.scale("C:minor")\` (control octave with \`n\` or \`transpose\`, not in scale name)
-
-2. **Pattern Arithmetic**: NEVER use JavaScript arithmetic operators (+, -, *, /) on patterns.
-   - BAD: \`slider(1) + 10\`
-   - GOOD: \`slider(1).add(10)\`
-   - BAD: \`lpf(slider(0.5) * 1000)\`
-   - GOOD: \`lpf(slider(0.5).mul(1000))\`
-
-3. **Tempo and Rhythm**: \`setCpm(X)\` sets cycles per minute. Strudel patterns default to **1 cycle = 1 measure (4 beats)**.
-   - To achieve X BPM in 4/4 time, use \`setCpm(X/4)\`.
-   - **CRITICAL**: If you use \`setCpm(X/4)\`, you MUST write patterns that fill the cycle with 4 beats of content.
-   - If you write sparse patterns (e.g. \`s("bd")\` which is 1 event per cycle), and use \`setCpm(X/4)\`, it will sound 4x too slow (quarter note speed).
-   - **Correct Techno Kick**: \`s("bd*4")\` (4 kicks per cycle) at \`setCpm(130/4)\` = 130 kicks/min.
-   - **Incorrect Techno Kick**: \`s("bd")\` (1 kick per cycle) at \`setCpm(130/4)\` = 32.5 kicks/min (Too Slow).
-
-4. **Sound Loading & Samples**:
-   - You MUST ensure sounds are loaded before using them.
-   - **Default Samples**: \`casio\`, \`crow\`, \`insect\`, \`wind\`, \`jazz\`, \`metal\`, \`east\`, \`space\`, \`numbers\`, \`num\`, \`piano\` (synth), \`vcsl\` (instruments).
-   - **Tidal Samples**: To use standard Tidal sounds, you MUST load them:
-     \`\`\`javascript
-     samples('github:tidalcycles/dirt-samples');
-     \`\`\`
-   - **FORBIDDEN SAMPLES (Do NOT Use)**:
-     - \`shaker\` (NOT available. Use \`hh\` or \`odx:2\`).
-     - \`gtr-nylon\` (NOT available. Use \`gtr\`).
-     - \`djembe\` (NOT available).
-   - **VERIFIED \`dirt-samples\` KEYS**: \`808\`, \`909\`, \`ade\`, \`amencutup\`, \`arpy\`, \`auto\`, \`bass\`, \`bd\`, \`bend\`, \`birds\`, \`bleep\`, \`blip\`, \`breaks125\`, \`bubble\`, \`can\`, \`casio\`, \`clak\`, \`click\`, \`coins\`, \`cp\`, \`cr\`, \`crow\`, \`d\`, \`dist\`, \`drum\`, \`drumtraks\`, \`east\`, \`electro1\`, \`feel\`, \`feelfx\`, \`fire\`, \`flick\`, \`fm\`, \`future\`, \`gab\`, \`glitch\`, \`gretsch\`, \`gtr\`, \`h\`, \`hand\`, \`hardcore\`, \`haw\`, \`hc\`, \`hh\`, \`hit\`, \`ho\`, \`house\`, \`incoming\`, \`industrial\`, \`insect\`, \`invaders\`, \`jazz\`, \`jungbass\`, \`jungle\`, \`juno\`, \`kurt\`, \`latibro\`, \`linnhats\`, \`made\`, \`mash\`, \`metal\`, \`moog\`, \`mouth\`, \`mp3\`, \`msg\`, \`mt\`, \`newnotes\`, \`noise\`, \`numbers\`, \`oc\`, \`odx\`, \`off\`, \`pad\`, \`padlong\`, \`perc\`, \`peri\`, \`pluck\`, \`popkick\`, \`print\`, \`proc\`, \`rave\`, \`rm\`, \`rs\`, \`sax\`, \`sd\`, \`sequential\`, \`sf\`, \`short\`, \`sid\`, \`sitar\`, \`sn\`, \`space\`, \`speakspell\`, \`speech\`, \`stab\`, \`stomp\`, \`sundance\`, \`tabla\`, \`tech\`, \`techno\`, \`tink\`, \`tok\`, \`toys\`, \`trump\`, \`ul\`, \`v\`, \`voodoo\`, \`wind\`, \`wobble\`, \`world\`, \`xmas\`, \`yeah\`.
-
-
-## Slider Usage Guide for Maximum Control
-
-Sliders are CRITICAL for live performance. You must provide sliders that allow the user to control the energy and timbre of the track.
-
-**Rules:**
-1.  **Never use \`pure()\` around a slider.** Sliders return patterns.
-2.  **Use sliders for expression.** Filter cutoffs, decay times, reverb amounts, FM indices.
-3.  **Combine sliders.** One slider can control multiple parameters to create macro controls (e.g., "Energy" slider increases cutoff and reverb size simultaneously).
-
-**Example:**
-\`\`\`javascript
-const energy = slider(0.5); // 0 to 1
-const cutoff = energy.mul(1000).add(200); // Map to 200-1200Hz
-s("sawtooth").lpf(cutoff).decay(energy.mul(0.5).add(0.1))
-\`\`\`
-
-## Genre Examples (ALL using Vital presets)
-
-### 1. Trance / Hard Techno (Peak Time)
-Focus on huge supersaw stacks, rhythmic gating, and driving percussion.
-\`\`\`javascript
-await vital('Super Pluck');
-await vital('Psytrance Bass');
-await vital('PD - Cinematic');
-
-stack(
-  // Driving Lead with Trancegate (Vital)
-  n("<[0 3]@2 [2 5] [-2 0]@2 [3 7]>*2".add("-12,-19"))
-    .scale("g:minor")
-    .s("vital_super_pluck")
-    .trancegate(2.2, 45, 1).o(1)
-    .rlpf(slider(0.8)).lpenv(2.5).shape(0.5).gain(0.8),
-
-  // Acid Bass (Vital)
-  n("g1").add("<0 12 0 7>").scale("g:minor")
-    .s("vital_psytrance_bass").acidenv(slider(0.5)).o(2),
-
-  // Atmosphere Pad (Vital)
-  n("g3'min").s("vital_pd_cinematic")
-    .room(0.7).gain(0.25).o(4),
-
-  // Rumble Kick (sample)
-  s("bd*4").bank("909").shape(0.6).lpf(200).o(0),
-  s("hh*8").bank("909").o(3)
-)
-\`\`\`
-
-### 2. Drum & Bass (Liquid/Tech)
-Focus on fast breaks (170bpm), deep bass, and airy pads.
-\`\`\`javascript
-setCpm(174/4)
-await vital('BA - Neurofunk');
-await vital('PD - Lush');
-
-stack(
-  // Break (sample)
-  s("amen:0").loop(2).cut(1).hpf(slider(0)).o(1),
-
-  // Neuro Bass (Vital)
-  n("f1").s("vital_ba_neurofunk")
-    .lpf(400).shape(0.5).duck("1").o(2),
-
-  // Lush Pad (Vital)
-  n("f2'min").s("vital_pd_lush")
-    .room(0.8).gain(0.3).o(3)
-)
-\`\`\`
-
-### 3. Ambient / Drone
-Focus on long evolving pads, random modulation, and generative textures.
-\`\`\`javascript
-await vital('DRONE Floating');
-await vital('PD - Warm Pad');
-
-n(irand(12).segment(8)).grab("c:minor")
-  .s("vital_drone_floating").decay(2).delay(1).room(0.9).o(1)
-\`\`\`
-
-### 4. Hyperpop / Bubblegum Bass
-Bright, energetic, with punchy bass and playful plucks.
-\`\`\`javascript
-await vital('BA - Rubber Bounciness');
-await vital('Plucked String');
-await vital('PD - Bright');
-
-stack(
-  s("bd*4").bank("808").shape(0.5).o(0),
-  s("hh*8").speed(1.5).o(3),
-
-  // Bouncy Bass (Vital)
-  n("c2 [c2 ~] c2 [c2 ~]").s("vital_ba_rubber_bounciness")
-    .lpf(600).gain(0.8).o(1),
-
-  // Bright Pluck (Vital)
-  n("<0 2 4 5>").scale("c:major")
-    .s("vital_plucked_string").decay(0.3).o(2)
-)
-\`\`\`
-
-### 5. Lo-Fi / Chillhop
-Warm, relaxed, dusty textures.
-\`\`\`javascript
-await vital('KEYS - Electric Piano');
-await vital('PD - Warm Pad');
-await vital('PL - Soft');
-
-stack(
-  s("bd").bank("808").o(0),
-  s("hh*4").speed(0.8).o(1),
-
-  // Warm Keys (Vital)
-  n("<0 2 3 5>").scale("d:minor")
-    .s("vital_keys_electric_piano").room(0.3).o(2),
-
-  // Soft Pad (Vital)
-  n("d3'min").s("vital_pd_warm_pad")
-    .room(0.6).gain(0.25).o(3)
-)
-\`\`\`
-
-## Output Format
-
-You must output a JSON object with:
-1.  **code**: The complete, runnable Strudel code. CRITICAL: The code string MUST be formatted with newline characters (\`\\n\`), proper indentation (2 spaces), and spacing. DO NOT output a single line string.
-2.  **rationale**: A detailed commentary (2-3 paragraphs) explaining:
-    *   **Sonic Concept**: The mood and journey.
-    *   **Technical Choices**: Why you used specific helpers (e.g., \`trancegate\` for rhythmic gating) or sound design techniques.
-    *   **Performance Guide**: Specific instructions for the DJ on how to use the generated sliders to build tension and release (e.g., "Start with the 'Energy' slider at 0 for a muffled intro, then slowly raise to 0.8 for the drop").
-
-`;
-
-const MODIFY_SYSTEM_PROMPT = `# Strudel AI Modification Expert
-
-You are an expert Strudel/TidalCycles live-coder. Your task is to modify existing code based on user requests by generating minimal, precise patches.
-
-## Output Format
-
-You must output a JSON object with:
-1. "reasoning": A high-level explanation of the changes.
-2. "patches": An array of patch objects, where each object contains:
-    - "target": A short name for the component being modified.
-    - "search": The EXACT string snippet to find in the original code. Must be unique enough to find the correct location.
-    - "replace": The EXACT string replacement.
-    - "intent": Why this specific change is being made.
-   
-## IMPORTANT: Valid Code Rules
-
-1. **Scale Syntax**: You MUST use colons instead of spaces for scale names.
-   - BAD: \`.scale("C:minor pentatonic")\` (causes "incomplete scale name" error)
-   - GOOD: \`.scale("C:minor:pentatonic")\`
-   - BAD: \`.scale("C4 minor")\`
-   - GOOD: \`.scale("C:minor")\` (control octave with \`n\` or \`transpose\`, not in scale name)
-
-2. **Pattern Arithmetic**: NEVER use JavaScript arithmetic operators (+, -, *, /) on patterns.
-   - BAD: \`slider(1) + 10\`
-   - GOOD: \`slider(1).add(10)\`
-   - BAD: \`lpf(slider(0.5) * 1000)\`
-   - GOOD: \`lpf(slider(0.5).mul(1000))\`
-
-3. **Tempo and Rhythm**: \`setCpm(X)\` sets cycles per minute. Strudel patterns default to **1 cycle = 1 measure (4 beats)**.
-   - To achieve X BPM in 4/4 time, use \`setCpm(X/4)\`.
-   - **CRITICAL**: If you use \`setCpm(X/4)\`, you MUST ensure your patterns are dense enough (e.g. \`s("bd*4")\` for 4-on-the-floor) so it doesn't sound like X/4 BPM.
-
-4. **Sound Loading & Samples**:
-   - You MUST ensure sounds are loaded before using them.
-   - **Default Samples**: \`casio\`, \`crow\`, \`insect\`, \`wind\`, \`jazz\`, \`metal\`, \`east\`, \`space\`, \`numbers\`, \`num\`, \`piano\` (synth), \`vcsl\` (instruments).
-   - **Tidal Samples**: To use standard Tidal sounds, you MUST load them:
-     \`\`\`javascript
-     samples('github:tidalcycles/dirt-samples');
-     \`\`\`
-   - **FORBIDDEN SAMPLES (Do NOT Use)**:
-     - \`shaker\` (NOT available. Use \`hh\` or \`odx:2\`).
-     - \`gtr-nylon\` (NOT available. Use \`gtr\`).
-     - \`djembe\` (NOT available).
-   - **VERIFIED \`dirt-samples\` KEYS**: \`808\`, \`909\`, \`ade\`, \`amencutup\`, \`arpy\`, \`auto\`, \`bass\`, \`bd\`, \`bend\`, \`birds\`, \`bleep\`, \`blip\`, \`breaks125\`, \`bubble\`, \`can\`, \`casio\`, \`clak\`, \`click\`, \`coins\`, \`cp\`, \`cr\`, \`crow\`, \`d\`, \`dist\`, \`drum\`, \`drumtraks\`, \`east\`, \`electro1\`, \`feel\`, \`feelfx\`, \`fire\`, \`flick\`, \`fm\`, \`future\`, \`gab\`, \`glitch\`, \`gretsch\`, \`gtr\`, \`h\`, \`hand\`, \`hardcore\`, \`haw\`, \`hc\`, \`hh\`, \`hit\`, \`ho\`, \`house\`, \`incoming\`, \`industrial\`, \`insect\`, \`invaders\`, \`jazz\`, \`jungbass\`, \`jungle\`, \`juno\`, \`kurt\`, \`latibro\`, \`linnhats\`, \`made\`, \`mash\`, \`metal\`, \`moog\`, \`mouth\`, \`mp3\`, \`msg\`, \`mt\`, \`newnotes\`, \`noise\`, \`numbers\`, \`oc\`, \`odx\`, \`off\`, \`pad\`, \`padlong\`, \`perc\`, \`peri\`, \`pluck\`, \`popkick\`, \`print\`, \`proc\`, \`rave\`, \`rm\`, \`rs\`, \`sax\`, \`sd\`, \`sequential\`, \`sf\`, \`short\`, \`sid\`, \`sitar\`, \`sn\`, \`space\`, \`speakspell\`, \`speech\`, \`stab\`, \`stomp\`, \`sundance\`, \`tabla\`, \`tech\`, \`techno\`, \`tink\`, \`tok\`, \`toys\`, \`trump\`, \`ul\`, \`v\`, \`voodoo\`, \`wind\`, \`wobble\`, \`world\`, \`xmas\`, \`yeah\`.
-
-5. **Visual Feedback**
-
-  Enhance the performance with reactive visualizations:
-  - **Standard**: \`._scope()\` (waveform), \`._spectrum()\` (frequency)
-  - **Radial (New)**: \`._rscope()\` (circular waveform), \`._rspectrum()\` (circular frequency)
-
-  \`\`\`javascript
-  // Attach to master or specific layers
-  stack(
-    kick, 
-    bass
-  )._rscope({ color: "cyan", scale: 0.5 })
-  \`\`\`
-
-5. **Vital Presets (SVLive)** — Load with \`await vital('Name')\`. Play with \`.s("vital_name")\`. Available: 2300+ presets (bass, pad, lead, pluck, bell, world, fx). Use for synths; keep drums as Tidal samples.
-
-## Rules
-- Keep changes minimal. Do not rewrite the whole file.
-- Ensure "search" strings exactly match existing code (whitespace and all).
-- Ensure "replace" strings are valid Strudel code that fits into the context.
-`;
-
-const DJ_SYSTEM_PROMPT = `# Strudel AI DJ Agent
-
-You are an autonomous AI DJ performing live. Your goal is to "perform" the track by evolving the code over time.
-
-## Performance Strategy
-You are in the middle of a set. Look at the current code and decide on the next moves to keep the audience engaged.
-Do NOT simply rewrite the track. Perform **actions** on it.
-
-**Queue your changes**: You can specify a delay for each patch to create a sequence of events (e.g., drop the bass in 4 seconds, then bring in the hi-hats 8 seconds later).
-
-### Valid Actions (Choose 1-2 sequences per turn):
-1. **Variation**: Change the rhythm or melody of an existing layer.
-2. **Texture**: Add effects (reverb, delay, distortion) or change synth parameters (cutoff, decay).
-3. **Arrangement**: Mute/unmute parts, add a new layer, or remove a layer.
-4. **Dynamics**: Manipulate sliders or gain to build tension or release.
-5. **Transition**: Prepare for a drop or a breakdown.
-
-## Output Format
-Return a JSON object with:
-1. "reasoning": A concise thought process.
-2. "patches": An array of patch objects:
-    - "target": Component name
-    - "search": EXACT code to replace
-    - "replace": New code
-    - "intent": Description of the change
-    - "delay": (Optional) Number of seconds to wait before applying this patch (default 0). Use this to queue changes!
-
-## Rules
-- **Be Incremental**: Small changes are better than big ones.
-- **Plan Ahead**: Use the 'delay' field to line up changes.
-- **Maintain Continuity**: Don't change the BPM or key unless it's a deliberate transition.
-- **Valid Code**: Ensure all changes result in valid Strudel code.
-`;
+// SYSTEM_PROMPT, MODIFY_SYSTEM_PROMPT, DJ_SYSTEM_PROMPT are now imported from ../../ai/prompts/*.txt?raw
 
 const modifySchema = {
   type: "object",
@@ -687,6 +266,7 @@ export function AITab({ context }) {
   const [modelId, setModelId] = useState(DEFAULT_ANTHROPIC_MODEL);
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState('generate'); // 'generate', 'modify', 'dj', or 'alternatives'
+  const [visualMode, setVisualMode] = useState(false); // Hydra visual generation
   const [isLoading, setIsLoading] = useState(false);
   const [processingHint, setProcessingHint] = useState('');
   const [streamingText, setStreamingText] = useState(''); // Real-time streaming output
@@ -700,6 +280,13 @@ export function AITab({ context }) {
   // Alternatives panel state
   const [alternatives, setAlternatives] = useState(null); // { layers, rhythmVariants, harmonyVariants }
   const [altLoading, setAltLoading] = useState(false);
+
+  // Style Profile state (Essentia audio analysis)
+  const [styleProfile, setStyleProfile] = useState(null); // Essentia analysis result
+  const [styleLoading, setStyleLoading] = useState(false); // Analysis in progress
+  const [styleError, setStyleError] = useState(null);
+  const [essentiaAvailable, setEssentiaAvailable] = useState(null); // null=unknown, true/false
+  const fileInputRef = useRef(null);
 
   // DJ Mode state
   const [djStatus, setDjStatus] = useState('idle'); // 'idle', 'thinking', 'queued'
@@ -723,24 +310,61 @@ export function AITab({ context }) {
       );
       let model = localStorage.getItem('anthropic_model')?.trim() || '';
 
+      // Check if user explicitly selected a provider in Settings
+      const explicitProvider = localStorage.getItem('ai_provider');
+      const hasLocalBase = !!base;
+      const hasLocalKey = !!secret;
+      const hasLocalModel = !!model;
+      console.info(`[AI] Config init: ai_provider=${explicitProvider || '(none)'} | baseURL=${base || '(none)'} | model=${model || '(none)'} | keyLen=${secret.length}`);
+
       if (file && typeof file === 'object') {
-        // baseURL / auth always sync from file
-        if (typeof file.baseURL === 'string' && file.baseURL.trim()) base = file.baseURL.trim();
-        const lsKey = secret;
-        if (typeof file.authToken === 'string' && file.authToken.trim()) secret = file.authToken.trim();
-        else if (typeof file.apiKey === 'string' && file.apiKey.trim()) secret = file.apiKey.trim();
-        if (file.authStyle === 'authToken') pref = 'authToken';
-        else if (file.authStyle === 'apiKey') pref = 'apiKey';
-        // Diagnostic
-        if (secret !== lsKey) {
-          const maskedOld = lsKey ? `${lsKey.slice(0, 4)}...${lsKey.slice(-4)}` : '(empty)';
-          const maskedNew = `${secret.slice(0, 6)}...${secret.slice(-4)}`;
-          console.info(`[AI] Key source: provider.json (${maskedNew}) overrides localStorage (${maskedOld})`);
-        }
-        // Model: only use file as fallback when user hasn't explicitly set one
-        if (!model) {
-          if (typeof file.model === 'string' && file.model.trim()) model = file.model.trim();
-          else if (typeof file.modelId === 'string' && file.modelId.trim()) model = file.modelId.trim();
+        // === Provider resolution strategy ===
+        // Priority: explicit provider > localStorage config > built-in defaults > file fallback
+        // The file (anthropic.provider.json) is ONLY used when nothing else is configured.
+        const useFileAsFallback = !explicitProvider;
+
+        if (useFileAsFallback) {
+          // No explicit provider saved. Check if user has any config in localStorage.
+          if (!hasLocalBase && !hasLocalKey) {
+            // Truly fresh session — use built-in deepseek defaults (consistent with Settings UI)
+            // instead of the file's yxai88 config. The file's API key is still a fallback.
+            base = 'https://api.deepseek.com/anthropic';
+            model = model || 'deepseek-v4-pro';
+            pref = 'authToken';
+            // Persist these defaults so state is consistent across tabs/sessions
+            localStorage.setItem('ai_provider', 'deepseek');
+            localStorage.setItem('anthropic_base_url', base);
+            localStorage.setItem('anthropic_auth_style_pref', pref);
+            if (!hasLocalModel) localStorage.setItem('anthropic_model', model);
+            console.info('[AI] Fresh session — defaulting to DeepSeek (matches Settings UI)');
+          } else {
+            // User has some config in localStorage but no explicit provider.
+            // Use their saved config, not the file's baseURL.
+            console.info('[AI] Using localStorage config (no explicit provider)');
+          }
+          // API key: only use file key when no key in localStorage at all
+          if (!hasLocalKey) {
+            const lsKey = secret;
+            if (typeof file.authToken === 'string' && file.authToken.trim()) secret = file.authToken.trim();
+            else if (typeof file.apiKey === 'string' && file.apiKey.trim()) secret = file.apiKey.trim();
+            if (secret !== lsKey) {
+              const maskedOld = lsKey ? `${lsKey.slice(0, 4)}...${lsKey.slice(-4)}` : '(empty)';
+              const maskedNew = `${secret.slice(0, 6)}...${secret.slice(-4)}`;
+              console.info(`[AI] Key source: provider.json (${maskedNew}), no localStorage key found`);
+            }
+          }
+          // Auth style from file: only if localStorage has no preference set
+          if (pref === 'auto') {
+            if (file.authStyle === 'authToken') pref = 'authToken';
+            else if (file.authStyle === 'apiKey') pref = 'apiKey';
+          }
+          // Model from file: only if no model in localStorage
+          if (!model) {
+            if (typeof file.model === 'string' && file.model.trim()) model = file.model.trim();
+            else if (typeof file.modelId === 'string' && file.modelId.trim()) model = file.modelId.trim();
+          }
+        } else {
+          console.info(`[AI] Provider explicitly set to "${explicitProvider}", ignoring anthropic.provider.json`);
         }
       }
       if (!model) model = DEFAULT_ANTHROPIC_MODEL;
@@ -755,6 +379,7 @@ export function AITab({ context }) {
       setApiKey(secret);
       setAuthStylePref(pref === 'apiKey' || pref === 'authToken' || pref === 'auto' ? pref : 'auto');
       setModelId(model);
+      console.info(`[AI] Config resolved: baseURL=${base || '(default)'} | model=${model} | auth=${pref} | explicitProvider=${explicitProvider || '(none)'}`);
     })();
   }, []);
 
@@ -795,8 +420,35 @@ export function AITab({ context }) {
   };
 
   // === Claude Code (local CLI) mode ===
-  const [ccOutput, setCcOutput] = useState('');
   const BRIDGE_URL = 'http://localhost:8765';
+  const [ccOutput, setCcOutput] = useState('');
+
+  // === LLM Interaction Logging (fire-and-forget to vital-bridge) ===
+  const saveLLMLog = useCallback((sysPrompt, usrPrompt, fullResp, thinkingBlocks,
+    logMode, logModel, logIntent, logPresetGuidance, logDuration, parseError) => {
+    const payload = {
+      system_prompt: sysPrompt,
+      user_prompt: usrPrompt,
+      full_response: fullResp,
+      thinking_blocks: (thinkingBlocks || []).map(b => ({
+        text: typeof b === 'string' ? b.slice(0, 3000) : (b.text || '').slice(0, 3000),
+      })),
+      mode: logMode,
+      model: logModel,
+      intent: logIntent || {},
+      preset_guidance: logPresetGuidance || '',
+      duration_sec: logDuration || 0,
+      translation_error: parseError || '',
+    };
+    fetch(`${BRIDGE_URL}/log/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    }).then(r => r.json()).then(d => {
+      if (d.ok) console.info(`[AI] Log saved: ${d.file}`);
+    }).catch(() => {});
+  }, [BRIDGE_URL]);
 
   // === Console logging helper — outputs to both browser console and Strudel Console tab ===
   const log = useCallback((message, type = '') => {
@@ -883,8 +535,83 @@ export function AITab({ context }) {
     }
   };
 
+  // === Style Profile: Audio Analysis ===
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac', 'audio/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/x-wav'];
+    const validExts = ['.wav', '.mp3', '.flac', '.ogg', '.m4a', '.aac'];
+    const ext = (file.name || '').toLowerCase().slice(-4);
+    if (!validTypes.includes(file.type) && !validExts.includes(ext) && file.type !== '') {
+      setStyleError(`Unsupported format: ${file.type || ext}. Use WAV, MP3, FLAC, OGG, or M4A.`);
+      return;
+    }
+
+    setStyleLoading(true);
+    setStyleError(null);
+    setStyleProfile(null);
+
+    log(`Analyzing audio: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+    setProcessingHint('Analyzing audio with Essentia...');
+
+    try {
+      const profile = await analyzeAudioFile(file);
+      setStyleProfile(profile);
+
+      // Auto-populate the prompt with the style description
+      const desc = profile.description || `${profile.genre?.primary || ''} track`;
+      if (!prompt.trim()) {
+        setPrompt(`Generate a track in the style of this reference: ${desc}`);
+      }
+
+      log(`Style analysis complete: ${profile.genre?.primary} | ${profile.bpm?.value || '?'}bpm | ${profile.key?.value || '?'} | ${profile.mood?.primary}`);
+      setProcessingHint('');
+    } catch (err) {
+      const msg = err.message || String(err);
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setStyleError('vital-bridge not running. Start it with: uvicorn server:app --port 8765');
+      } else {
+        setStyleError(msg);
+      }
+      log(`Style analysis failed: ${msg}`, 'error');
+      setProcessingHint('');
+    } finally {
+      setStyleLoading(false);
+    }
+  };
+
+  // Check Essentia availability on mount
+  useEffect(() => {
+    checkEssentiaStatus().then(status => {
+      setEssentiaAvailable(status.available && status.essentia_installed);
+      if (status.available && status.essentia_installed) {
+        if (status.models_count > 0) {
+          log(`Essentia ready with ${status.models_count} models`);
+        } else if (status.models_missing?.length > 0) {
+          log(`Essentia installed but ${status.models_missing.length} models missing. Run: mkdir -p ~/essentia_models && download models from essentia.upf.edu`, 'warn');
+        }
+      }
+    }).catch(() => setEssentiaAvailable(false));
+  }, []);
+
+  const clearStyleProfile = () => {
+    setStyleProfile(null);
+    setStyleError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const generateResponse = async (isAutoDJ = false) => {
-    if (!apiKey) {
+    // Read directly from localStorage to avoid stale React state after provider switch.
+    // React state updates (via syncFromStorage) may not have flushed by the time
+    // the user clicks "send", causing wrong API key / baseURL to be used.
+    const currentKey = localStorage.getItem('anthropic_api_key') || apiKey;
+    const currentBase = localStorage.getItem('anthropic_base_url') || baseURL;
+    const currentAuthStyle = (localStorage.getItem('anthropic_auth_style_pref') || authStylePref || 'auto');
+    const currentModel = localStorage.getItem('anthropic_model') || modelId;
+
+    if (!currentKey) {
       setError('Please enter an API Key');
       return;
     }
@@ -897,8 +624,8 @@ export function AITab({ context }) {
     setProcessingHint('Connecting...');
     setStreamingText('');
     startTimer();
-    const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
-    log(`Starting ${mode} request → ${resolvedModel} @ ${baseURL || 'api.anthropic.com'}`);
+    const resolvedModel = (currentModel || '').trim() || DEFAULT_ANTHROPIC_MODEL;
+    log(`Starting ${mode} request → ${resolvedModel} @ ${currentBase || 'api.anthropic.com'}`);
     setError(null);
     if (!isAutoDJ) {
       setRationale(null);
@@ -906,7 +633,7 @@ export function AITab({ context }) {
     }
 
     try {
-      const client = createAnthropicClient(apiKey, baseURL, authStylePref);
+      const client = createAnthropicClient(currentKey, currentBase, currentAuthStyle);
 
       const currentCode = getCurrentCode();
 
@@ -949,28 +676,46 @@ export function AITab({ context }) {
 
       let userMessage = prompt;
       // === Module B: Dynamic Prompt Building ===
-      let systemPrompt = buildEnhancedPrompt(intent, prompt || '', SYSTEM_PROMPT, presetGuidance);
-      let schema = {
-        type: "object",
-        properties: {
-          code: { type: "string", description: "The complete valid Strudel code snippet. MUST contain newline characters (\\n) for proper formatting and readability." },
-          rationale: { type: "string", description: "Commentary on the music and performance suggestions" }
-        },
-        required: ["code", "rationale"],
-        additionalProperties: false
+      // Build editor context for state-aware generation
+      const editorContext = {
+        currentCode,
+        isPlaying: context.editorRef?.current?.repl?.state?.playing || false,
+        evalError: context.editorRef?.current?.repl?.state?.evalError
+          ? (context.editorRef.current.repl.state.evalError.message || String(context.editorRef.current.repl.state.evalError))
+          : null,
       };
+      setProcessingHint('Building context...');
+      
+      // If we have a style profile from audio analysis, use style-guided prompt building
+      let systemPrompt;
+      if (styleProfile && !styleProfile._fallback) {
+        log('Using style-profile-guided prompt (Essentia audio analysis)');
+        systemPrompt = await buildStyleEnhancedPrompt(
+          styleProfile,
+          prompt || '',
+          SYSTEM_PROMPT,
+          editorContext,
+          {
+            styleProfile: {
+              styleProfileToIntent,
+              buildStyleGuidance,
+              getDrumBankRecommendation,
+            }
+          }
+        );
+      } else {
+        systemPrompt = await buildEnhancedPrompt(intent, prompt || '', SYSTEM_PROMPT, presetGuidance, editorContext);
+      }
 
       if (mode === 'modify' || isAutoDJ) {
         const request = isAutoDJ
           ? (prompt || "Evolve the track musically. Surprise me, but keep it coherent.")
           : prompt;
 
-        userMessage = `Here is the current strudel code:\n\n\`\`\`javascript\n${currentCode}\n\`\`\`\n\nRequest: ${request}\n\nIf the code is empty or the request cannot be fulfilled with patches, please explain why in the reasoning and return an empty patches array.`;
-        // === Module B: Enhanced modify/DJ prompts ===
+        userMessage = `Here is the current strudel code:\n\n\`\`\`javascript\n${currentCode}\n\`\`\`\n\nRequest: ${request}\n\nUse the generate_strudel_code tool to submit the modified code.`;
         systemPrompt = isAutoDJ
           ? DJ_SYSTEM_PROMPT + presetGuidance
-          : buildModifyPrompt(intent, currentCode, MODIFY_SYSTEM_PROMPT, presetGuidance);
-        schema = modifySchema;
+          : await buildModifyPrompt(intent, currentCode, MODIFY_SYSTEM_PROMPT, presetGuidance, editorContext);
       }
 
       let messages = [
@@ -982,6 +727,8 @@ export function AITab({ context }) {
 
       let retries = 0;
       const maxRetries = 3;
+      let fullText = '';       // Declared here so catch block can access
+      let thinkingBlocks = []; // Same — for error logging
 
       while (retries < maxRetries) {
         const resolvedModel = (modelId || '').trim() || DEFAULT_ANTHROPIC_MODEL;
@@ -994,16 +741,56 @@ export function AITab({ context }) {
         // Note: uses messages.stream() (not beta.messages) for broader SDK compatibility.
         // Structured output (output_format) is not used in stream mode — the system
         // prompt already instructs the model to output JSON.
+
+        // Detect if the provider supports Anthropic tool_use.
+        // Third-party Anthropic-compatible endpoints (DeepSeek, Kimi) may not
+        // fully support function calling. For those, fall back to text-based
+        // code extraction like strudel.vibelive.club does.
+        // Append visual prompt if Hydra mode is enabled
+        const finalSystemPrompt = visualMode
+          ? systemPrompt + '\n\n' + VISUAL_SYSTEM_PROMPT
+          : systemPrompt;
+
+        const isAnthropicProvider = !baseURL || baseURL.includes('api.anthropic.com') || baseURL.includes('api.yxai88.com');
+        const streamSystemPrompt = isAnthropicProvider
+          ? finalSystemPrompt
+          : finalSystemPrompt + '\n\n## Code Output Format\nYou MUST output your Strudel code inside a fenced code block:\n```strudel\n// your complete code here\n```\n\nFirst, explain your approach in 1-2 sentences. Then output the code block.';
+
         const stream = await client.messages.stream({
           model: resolvedModel,
           max_tokens: 20000,
-          system: systemPrompt,
+          system: streamSystemPrompt,
           messages: messages,
+          tools: isAnthropicProvider ? GENERATE_TOOLS : undefined,
         });
 
-        let fullText = '';
+        fullText = '';
+        thinkingBlocks = []; // Capture thinking/reasoning content for logging
+        let toolUseBlocks = []; // Track tool_use content blocks
+        let thinkingCharCount = 0;
         let lastUpdate = 0;
         for await (const event of stream) {
+          // Track tool_use block starts
+          if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+            toolUseBlocks.push({
+              id: event.content_block.id,
+              name: event.content_block.name,
+              input_json: '',
+            });
+            setProcessingHint(`Calling tool: ${event.content_block.name}...`);
+          }
+          // Capture tool input JSON deltas
+          if (event.type === 'content_block_delta' && event.delta?.type === 'input_json_delta') {
+            const block = toolUseBlocks[toolUseBlocks.length - 1];
+            if (block) block.input_json += (event.delta.partial_json || '');
+          }
+          // Capture thinking deltas (model's internal reasoning)
+          if (event.type === 'content_block_delta' && event.delta?.type === 'thinking_delta') {
+            thinkingBlocks.push({ text: event.delta.thinking, ts: Date.now() });
+            thinkingCharCount += (event.delta.thinking || '').length;
+            setProcessingHint(`Thinking... (${Math.round(thinkingCharCount/1000)}k chars)`);
+          }
+          // Capture text deltas (the actual output)
           if (event.type === 'content_block_delta' && event.delta?.text) {
             fullText += event.delta.text;
             // Throttle re-renders to ~100ms intervals (except first 500 chars)
@@ -1016,114 +803,273 @@ export function AITab({ context }) {
         }
         setStreamingText(fullText); // Final update
 
-        const finalMessage = await stream.finalMessage();
-        const tokens = finalMessage.usage;
-        log(`Stream complete — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens (${fullText.length} chars)`);
-        setProcessingHint('Parsing response...');
+        // Build tool_use blocks from captured streaming events as fallback
+        const capturedToolUses = toolUseBlocks.map(b => {
+          try { return { type: 'tool_use', id: b.id, name: b.name, input: JSON.parse(b.input_json || '{}') }; }
+          catch { return { type: 'tool_use', id: b.id, name: b.name, input: {} }; }
+        });
 
-        // Parse from accumulated streaming text (more reliable than finalMessage.content
-        // which may have different block structures in streaming mode)
-        let result;
+        let toolUses = [];
         try {
-          result = parseBetaContentBlock({ text: fullText });
-        } catch (parseErr) {
-          // JSON parse failed — retry with format instruction
-          log(`JSON parse failed: ${parseErr.message}`, 'error');
-          console.error('[Strudel AI] parseBetaContentBlock failed, sample:', fullText.slice(0, 300));
+          const finalMessage = await stream.finalMessage();
+          const tokens = finalMessage.usage;
+          log(`Stream complete — input: ${tokens?.input_tokens || '?'} tokens, output: ${tokens?.output_tokens || '?'} tokens (${fullText.length} chars, ${thinkingBlocks.length} thinking blocks)`);
+          toolUses = (finalMessage.content || []).filter(c => c.type === 'tool_use');
+        } catch (finalErr) {
+          // finalMessage() can throw when the response has only tool_use blocks
+          // (no text content). Fall back to tool_use blocks captured from streaming events.
+          log(`finalMessage failed (${finalErr.message}), using captured ${capturedToolUses.length} tool_use blocks`, 'warn');
+          toolUses = capturedToolUses;
+        }
+        setProcessingHint('Processing response...');
+
+        if (toolUses.length > 0) {
+          log(`Model used ${toolUses.length} tool(s): ${toolUses.map(t => t.name).join(', ')}`);
+          setProcessingHint('Executing tools...');
+
+          let shouldContinue = false;
+          let toolResults = [];
+
+          for (const toolUse of toolUses) {
+            if (toolUse.name === 'generate_strudel_code') {
+              const { code, rationale } = toolUse.input || {};
+              setProcessingHint('Validating generated code...');
+
+              const genResult = await handleGenerateCode({ code, rationale });
+
+              if (genResult.success) {
+                // === Code is valid — apply it ===
+                const { code: validatedCode, replacements } = fixInvalidSounds(genResult.code);
+                if (replacements.length > 0) {
+                  console.info('[Strudel AI] Fixed invalid sounds:', replacements);
+                  const fixNote = replacements.map(r => `${r.original} → ${r.replacement}`).join(', ');
+                  setRationale(prev => (prev || '') + `\n\n🔧 Auto-fixed sounds: ${fixNote}`);
+                }
+                context.editorRef.current.setCode(validatedCode);
+
+                // === Post-eval self-correction: check for runtime errors ===
+                setProcessingHint('Checking for runtime errors...');
+                try {
+                  // evaluate with autostart=false to detect errors without starting audio
+                  await context.editorRef.current.repl.evaluate(validatedCode, false);
+                  const evalError = context.editorRef.current.repl.state.evalError;
+                  if (evalError) {
+                    const errMsg = evalError.message || String(evalError);
+                    log(`Runtime error (self-correcting): ${errMsg}`, 'warn');
+                    toolResults.push({
+                      type: 'tool_result',
+                      tool_use_id: toolUse.id,
+                      content: `Code passed pre-validation but produced a runtime error when executed:\n\n${errMsg}\n\nFix the error and call generate_strudel_code again with corrected code.`,
+                      is_error: true,
+                    });
+                    shouldContinue = true;
+                    break;
+                  }
+                } catch (evalErr) {
+                  // evaluate() itself threw (unlikely since repl catches internally, but guard)
+                  log(`Evaluate threw (self-correcting): ${evalErr.message}`, 'warn');
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: toolUse.id,
+                    content: `Code evaluation failed: ${evalErr.message}\n\nFix the code and retry.`,
+                    is_error: true,
+                  });
+                  shouldContinue = true;
+                  break;
+                }
+
+                if (genResult.rationale) setRationale(genResult.rationale);
+                log(`Code applied! ${validatedCode.length} chars (${elapsedSecRef.current}s)`, 'highlight');
+
+                // Save success log
+                saveLLMLog(systemPrompt, userMessage, fullText, thinkingBlocks,
+                  isAutoDJ ? 'dj' : mode, resolvedModel, intent || {}, presetGuidance,
+                  elapsedSecRef.current, '');
+                // Ensure we exit both loops on success
+                shouldContinue = false;
+                break;
+              } else {
+                // Validation failed — report error back to model for retry
+                log(`Validation failed: ${genResult.error}`, 'error');
+                toolResults.push({
+                  type: 'tool_result',
+                  tool_use_id: toolUse.id,
+                  content: genResult.error,
+                  is_error: true,
+                });
+                shouldContinue = true;
+              }
+            } else if (toolUse.name === 'list_available_sounds') {
+              setProcessingHint('Querying available sounds...');
+              const category = toolUse.input?.category || 'all';
+              log(`Model queried sounds: ${category}`);
+
+              const soundList = await handleListSounds({ category });
+
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: soundList,
+              });
+              shouldContinue = true;
+            } else {
+              // Unknown tool
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: `Unknown tool: ${toolUse.name}`,
+                is_error: true,
+              });
+              shouldContinue = true;
+            }
+          }
+
+          if (!shouldContinue) break; // generate_strudel_code succeeded — done
+
+          // Detect: model queried sounds but never called generate_strudel_code
+          const hasCodeGen = toolUses.some(t => t.name === 'generate_strudel_code');
+          const hasSoundQuery = toolUses.some(t => t.name === 'list_available_sounds');
+
+          // Push tool calls + results into conversation for next turn
           retries++;
-          // Push the failed response so model can self-correct
+          if (retries >= maxRetries) {
+            const summary = hasCodeGen
+              ? toolResults.filter(t => t.is_error).map(t => t.content).join('; ')
+              : 'Model only queried sounds but never generated code.';
+            setError(`Failed after ${maxRetries} attempts. ${summary}`);
+            break;
+          }
+
           messages.push({
             role: 'assistant',
-            content: JSON.stringify({ _raw: String(fullText).slice(0, 500) }),
+            content: finalMessage.content.filter(c => c.type === 'tool_use' || c.type === 'text'),
           });
           messages.push({
             role: 'user',
-            content: 'Your last response was NOT valid JSON (it was wrapped in markdown or contained extra text). Please respond with ONLY a raw JSON object, NO markdown fences, NO backticks, JUST the JSON.',
+            content: toolResults,
           });
+          // Nudge: if model only queried sounds, remind it to generate code
+          if (hasSoundQuery && !hasCodeGen) {
+            messages.push({
+              role: 'user',
+              content: 'You now have the sound list. Call generate_strudel_code with your complete Strudel pattern code and a rationale.',
+            });
+          }
           continue;
         }
-        
-        let validationError = null;
-        if (result) {
-          if (mode === 'generate' && !isAutoDJ && result.code) {
-             validationError = await validateCode(result.code);
-          } else if (isAutoDJ && result.patches) {
-              // Validate DJ patches
-              // Note: Future patches might fail validation now if they depend on previous patches
-              // For now, we assume they are independent or cumulative and try our best.
-              if (result.patches.length > 0) {
-                 // We can't easily validate a sequence of future patches without simulating time.
-                 // So we'll just validate the syntax of the first one if immediate.
-                 // Or just trust the model more for DJ mode to avoid stopping the flow.
-                 // Let's do a light check on the first immediate patch if exists.
-                 const immediate = result.patches.find(p => !p.delay || p.delay === 0);
-                 if (immediate) {
-                    let tempCode = getCurrentCode();
-                     if (tempCode.includes(immediate.search)) {
-                         tempCode = tempCode.replace(immediate.search, immediate.replace);
-                         validationError = await validateCode(tempCode);
-                     }
-                 }
-              } else {
-                 if (result.patches.length > 0) {
-                    // validationError = "Could not find code to patch. Code may have changed.";
-                    // Actually, let's not error here, just log it.
-                 }
-              }
-          }
+
+        // === Fallback: no tool_use — extract code from text response ===
+        // Two strategies: legacy JSON parse ({"code": "...", "rationale": "..."}),
+        // or markdown fenced code blocks (```strudel / ```javascript / ```js) like strudel.vibelive.club.
+        log('No tool_use detected, extracting code from text...');
+
+        let extractedCode = null;
+        let extractedRationale = '';
+
+        // Strategy 1: Extract code from fenced ```strudel / ```javascript / ```js block
+        const fenceRe = /```(?:strudel|javascript|js)\s*\n?([\s\S]*?)```/i;
+        const fenceMatch = fenceRe.exec(fullText);
+        if (fenceMatch) {
+          extractedCode = fenceMatch[1].trim();
+          // Use text before the code block as rationale
+          const preBlock = fullText.slice(0, fullText.indexOf(fenceMatch[0])).trim();
+          extractedRationale = preBlock.slice(0, 300);
         }
-        
-        if (!validationError) {
-          if (result) {
-            if (mode === 'modify' && !isAutoDJ && result.patches) {
-              log(`Done! ${result.patches.length} patches generated (${elapsedSecRef.current}s)`, 'highlight');
-              setRationale(result.reasoning);
-              setPendingPatches(result.patches.map(p => ({ ...p, status: 'pending' })));
-            } else if (isAutoDJ && result.patches) {
-               log(`DJ patch generated (${elapsedSecRef.current}s)`, 'highlight');
-               setRationale(result.reasoning);
-               schedulePatches(result.patches);
-            } else {
-                if (result.code) {
-                  // === Module C: Post-generation Sound Validation ===
-                  const { code: validatedCode, replacements } = fixInvalidSounds(result.code);
-                  if (replacements.length > 0) {
-                    console.info('[Strudel AI] Fixed invalid sounds:', replacements);
-                    const fixNote = replacements.map(r => `${r.original} → ${r.replacement}`).join(', ');
-                    setRationale(prev => (prev || '') + `\n\n🔧 Auto-fixed sounds: ${fixNote}`);
-                  }
-                  context.editorRef.current.setCode(validatedCode);
-                  log(`Code applied! ${validatedCode.length} chars (${elapsedSecRef.current}s)`, 'highlight');
-                }
-                if (result.rationale) {
-                  setRationale(result.rationale);
-                }
+
+        // Strategy 2: Legacy JSON parse
+        if (!extractedCode) {
+          try {
+            const result = parseBetaContentBlock({ text: fullText });
+            if (result && result.code) {
+              extractedCode = result.code;
+              extractedRationale = result.rationale || '';
             }
+          } catch (_) { /* fall through */ }
+        }
+
+        if (extractedCode) {
+          const validationError = await toolValidateCode(extractedCode);
+          if (!validationError) {
+            const { code: validatedCode, replacements } = fixInvalidSounds(extractedCode);
+            if (replacements.length > 0) {
+              const fixNote = replacements.map(r => `${r.original} → ${r.replacement}`).join(', ');
+              setRationale(prev => (prev || '') + `\n\n🔧 Auto-fixed sounds: ${fixNote}`);
+            }
+            context.editorRef.current.setCode(validatedCode);
+
+            // === Post-eval self-correction (same as tool_use path) ===
+            setProcessingHint('Checking for runtime errors...');
+            try {
+              await context.editorRef.current.repl.evaluate(validatedCode, false);
+              const evalError = context.editorRef.current.repl.state.evalError;
+              if (evalError) {
+                const errMsg = evalError.message || String(evalError);
+                log(`Runtime error (self-correcting): ${errMsg}`, 'warn');
+                retries++;
+                if (retries >= maxRetries) {
+                  setError(`Failed after ${maxRetries} attempts. Runtime error: ${errMsg}`);
+                  break;
+                }
+                messages.push({ role: 'assistant', content: String(fullText).slice(0, 500) });
+                messages.push({ role: 'user', content: `Your code produced this runtime error when evaluated:\n\n${errMsg}\n\nFix the error and output corrected code in a \`\`\`strudel code block.` });
+                continue;
+              }
+            } catch (evalErr) {
+              log(`Evaluate threw (self-correcting): ${evalErr.message}`, 'warn');
+              retries++;
+              if (retries >= maxRetries) {
+                setError(`Failed after ${maxRetries} attempts. Eval error: ${evalErr.message}`);
+                break;
+              }
+              messages.push({ role: 'assistant', content: String(fullText).slice(0, 500) });
+              messages.push({ role: 'user', content: `Code evaluation failed: ${evalErr.message}\n\nFix and output corrected code in a \`\`\`strudel code block.` });
+              continue;
+            }
+
+            if (extractedRationale) setRationale(extractedRationale);
+            log(`Code applied via text extraction! ${validatedCode.length} chars`, 'highlight');
+            saveLLMLog(systemPrompt, userMessage, fullText, thinkingBlocks,
+              isAutoDJ ? 'dj' : mode, resolvedModel, intent || {}, presetGuidance,
+              elapsedSecRef.current, '');
+            break;
+          } else {
+            retries++;
+            if (retries >= maxRetries) {
+              setError(`Failed after ${maxRetries} attempts. Last error: ${validationError}`);
+              break;
+            }
+            messages.push({ role: 'assistant', content: String(fullText).slice(0, 500) });
+            messages.push({ role: 'user', content: `Code validation error: ${validationError}\n\nFix the error and output corrected code in a \`\`\`strudel code block.` });
+            continue;
           }
-          break;
         }
 
-        // Validation failed
+        // Neither tool_use nor extractable code found
         retries++;
-        console.warn(`AI Code Validation Failed (Attempt ${retries}/${maxRetries}):`, validationError);
-        
         if (retries >= maxRetries) {
-          setError(`Failed to generate valid code after ${maxRetries} attempts. Last error: ${validationError}`);
+          setError(`Failed after ${maxRetries} attempts. Model did not produce extractable code.`);
           break;
         }
-
-        // Add history for retry
         messages.push({
-          role: "assistant",
-          content: JSON.stringify(result)
+          role: 'assistant',
+          content: String(fullText).slice(0, 500),
         });
         messages.push({
-          role: "user",
-          content: `The code you generated is invalid. Error: ${validationError}\n\nPlease fix the code.`
+          role: 'user',
+          content: 'Output your Strudel code in a ```strudel code block. Include a brief explanation before the block.',
         });
+        continue;
       }
 
     } catch (err) {
+      // Save log even on fatal errors (if we have any response text)
+      try {
+        saveLLMLog(systemPrompt || '', userMessage || prompt || '',
+          fullText, thinkingBlocks,
+          isAutoDJ ? 'dj' : mode, resolvedModel, intent || {},
+          presetGuidance || '', elapsedSecRef.current, err.message || String(err));
+      } catch (_) { /* ignore */ }
+
       const errName = err.name || 'Error';
       const errMsg = err.message || String(err);
       const errStatus = err.status || '';
@@ -1358,6 +1304,19 @@ export function AITab({ context }) {
         </button>
       </div>
 
+      {/* Visual Mode toggle */}
+      <label className="flex items-center gap-2 px-1 cursor-pointer hover:opacity-80">
+        <input
+          type="checkbox"
+          checked={visualMode}
+          onChange={(e) => setVisualMode(e.target.checked)}
+          className="accent-pink-500 rounded"
+        />
+        <span className={cx('text-xs', visualMode ? 'text-pink-400 font-medium' : 'text-foreground/50')}>
+          🎨 Visual (Hydra)
+        </span>
+      </label>
+
       {mode === 'dj' && (
           <div className="p-4 rounded-md border border-purple-500/30 bg-purple-500/10 space-y-4">
               <div className="flex items-center justify-between">
@@ -1530,6 +1489,147 @@ export function AITab({ context }) {
 
       {mode !== 'alternatives' && (
       <div className="space-y-2 flex-1 flex flex-col">
+        {/* ── Style Analysis Section (Audio Upload) ── */}
+        {mode === 'generate' && (
+          <div className="space-y-2 p-2 rounded-md bg-purple-500/5 border border-purple-500/15">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-purple-400 flex items-center gap-1">
+                <SparklesIcon className="w-3 h-3" />
+                Audio Style Reference
+              </label>
+              {styleProfile && (
+                <button
+                  onClick={clearStyleProfile}
+                  className="text-xs text-foreground/40 hover:text-red-400 transition-colors"
+                  title="Clear style analysis"
+                >
+                  <XMarkIcon className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {!styleProfile && (
+              <>
+                <label className={cx(
+                  "flex items-center justify-center gap-2 p-3 rounded-md border border-dashed cursor-pointer transition-colors text-xs",
+                  styleLoading
+                    ? "border-purple-500/30 bg-purple-500/10 animate-pulse"
+                    : "border-foreground/20 hover:border-purple-400/50 hover:bg-purple-500/5"
+                )}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a"
+                    onChange={handleAudioUpload}
+                    disabled={styleLoading}
+                    className="hidden"
+                  />
+                  {styleLoading ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3 text-purple-400" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-purple-300">Analyzing audio...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">🎵</span>
+                      <span className="text-foreground/60">
+                        Upload a song to match its style
+                      </span>
+                    </>
+                  )}
+                </label>
+                {essentiaAvailable === false && (
+                  <p className="text-[10px] text-foreground/40 text-center">
+                    Essentia not available. Install: <code className="bg-foreground/10 px-1 rounded">pip install essentia-tensorflow</code> in vital-bridge
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Style Profile Display */}
+            {styleProfile && (
+              <div className="space-y-2 bg-black/10 rounded-md p-2 text-[11px]">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <div className="text-foreground/50">Genre</div>
+                  <div className="text-purple-300 font-medium">
+                    {styleProfile.genre?.primary || '?'}
+                    {styleProfile.genre?.confidence ? (
+                      <span className="text-foreground/30 ml-1">({(styleProfile.genre.confidence * 100).toFixed(0)}%)</span>
+                    ) : null}
+                  </div>
+
+                  <div className="text-foreground/50">BPM</div>
+                  <div className="text-foreground/80">
+                    {styleProfile.bpm ? `${styleProfile.bpm.value} BPM` : '—'}
+                  </div>
+
+                  <div className="text-foreground/50">Key</div>
+                  <div className="text-foreground/80">
+                    {styleProfile.key?.value || '—'}
+                  </div>
+
+                  <div className="text-foreground/50">Mood</div>
+                  <div className="text-foreground/80 capitalize">
+                    {styleProfile.mood?.primary || '—'}
+                    {styleProfile.mood?.arousal != null ? (
+                      <span className="text-foreground/30 ml-1">
+                        (⚡{(styleProfile.mood.arousal * 100).toFixed(0)}% ☻{(styleProfile.mood.valence * 100).toFixed(0)}%)
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {styleProfile.danceability && (
+                    <>
+                      <div className="text-foreground/50">Danceable</div>
+                      <div className="text-foreground/80">
+                        {styleProfile.danceability.danceable ? 'Yes' : 'No'} ({(styleProfile.danceability.probability * 100).toFixed(0)}%)
+                      </div>
+                    </>
+                  )}
+
+                  {styleProfile.voice && (
+                    <>
+                      <div className="text-foreground/50">Vocals</div>
+                      <div className="text-foreground/80">
+                        {styleProfile.voice.voice_present ? 'Present' : 'Instrumental'}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {styleProfile.instruments && (
+                  <div className="pt-1 border-t border-foreground/10">
+                    <span className="text-foreground/50">Instruments: </span>
+                    <span className="text-foreground/70">{styleProfile.instruments.join(', ')}</span>
+                  </div>
+                )}
+
+                {styleProfile.soundTags && (
+                  <div>
+                    <span className="text-foreground/50">Character: </span>
+                    <span className="text-foreground/70">{styleProfile.soundTags.join(', ')}</span>
+                  </div>
+                )}
+
+                {styleProfile.description && (
+                  <p className="text-foreground/50 italic pt-1 border-t border-foreground/10 mt-1">
+                    {styleProfile.description}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {styleError && (
+              <div className="text-red-400 text-[11px] p-1.5 rounded bg-red-500/10 border border-red-500/20">
+                {styleError}
+              </div>
+            )}
+          </div>
+        )}
+
         <label className="block text-sm font-medium">
           {mode === 'generate' ? 'Describe the music you want...' :
            mode === 'dj' ? 'Vibe / Direction (Optional)' :

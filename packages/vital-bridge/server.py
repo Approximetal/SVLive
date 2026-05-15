@@ -28,6 +28,15 @@ from fastapi.responses import Response, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+
+class _UpstreamError(Exception):
+    """Raised inside the streaming proxy when upstream returns a non-2xx status."""
+    def __init__(self, status_code: int, body: bytes, content_type: str | None = None):
+        self.status_code = status_code
+        self.body = body
+        self.content_type = content_type
+
+
 # ============================================================
 # Configuration
 # ============================================================
@@ -35,8 +44,30 @@ from pydantic import BaseModel
 SAMPLE_RATE = 44100
 BPM = 120.0
 CACHE_DIR = Path(__file__).parent / "render_cache"
-PRESETS_DIR = Path(os.environ.get("VITAL_PRESETS_DIR", os.path.expanduser("~/music/Vital")))
-JEK_PRESETS_DIR = Path(os.environ.get("JEK_PRESETS_DIR", os.path.expanduser("~/music/Jek's Vital Presets")))
+LOG_DIR = Path(__file__).parent / "llm_logs"
+def _resolve_presets_dir(env_key: str, *fallbacks: str) -> Path:
+    """Resolve a presets directory from env var, falling back to the first
+    path that actually exists on disk (or the first fallback if none do)."""
+    env_val = os.environ.get(env_key)
+    if env_val:
+        return Path(env_val)
+    for fb in fallbacks:
+        p = Path(os.path.expanduser(fb))
+        if p.is_dir():
+            return p
+    # nothing exists — return the first fallback so the error message makes sense
+    return Path(os.path.expanduser(fallbacks[0]))
+
+PRESETS_DIR = _resolve_presets_dir(
+    "VITAL_PRESETS_DIR",
+    "~/music/Vital",
+    "~/mnt/music/Vital",
+)
+JEK_PRESETS_DIR = _resolve_presets_dir(
+    "JEK_PRESETS_DIR",
+    "~/music/Jek's Vital Presets",
+    "~/mnt/music/Jek's Vital Presets",
+)
 
 # ============================================================
 # Global State
@@ -54,6 +85,7 @@ async def lifespan(app: FastAPI):
     synth = vita.Synth()
     synth.set_bpm(BPM)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
     print(f"[vital-bridge] Vita {vita.__version__} engine ready")
     print(f"[vital-bridge] Presets dir: {PRESETS_DIR}")
     print(f"[vital-bridge] Cache dir: {CACHE_DIR}")
@@ -267,6 +299,20 @@ class ExportRequest(BaseModel):
     format: str = 'wav'  # 'wav' or 'zip'
 
 
+class LogRequest(BaseModel):
+    """Full LLM interaction log for debugging Vital preset selection issues."""
+    system_prompt: str         # Full system prompt sent to the model
+    user_prompt: str           # User's request
+    full_response: str         # Complete model output text
+    thinking_blocks: list = [] # Captured thinking deltas (if any)
+    mode: str = "generate"     # generate / modify / dj
+    model: str = ""            # Model identifier
+    intent: dict = {}          # Resolved intent (genre, bpm, key, mood)
+    preset_guidance: str = ""  # Matched Vital presets injected into prompt
+    duration_sec: float = 0    # Request duration
+    translation_error: str = "" # If LLM translation failed
+
+
 # ============================================================
 # Endpoints
 # ============================================================
@@ -279,6 +325,15 @@ async def root():
         "vita_version": vita.__version__,
         "current_preset": current_preset_name,
         "sample_rate": SAMPLE_RATE,
+        "essentia_available": HAS_ESSENTIA,
+        "endpoints": {
+            "presets": "/presets",
+            "render": "/render",
+            "essentia_analyze": "/essentia/analyze",
+            "essentia_status": "/essentia/status",
+            "api_proxy": "/api-proxy/{path}",
+            "health": "/health",
+        },
     }
 
 
@@ -906,7 +961,7 @@ async def api_proxy(path: str, request: Request):
 
     # Forward headers (strip hop-by-hop and our custom one)
     fwd_headers = {}
-    skip = {"host", "connection", "transfer-encoding", "x-proxy-target", "content-length"}
+    skip = {"host", "connection", "transfer-encoding", "x-proxy-target", "content-length", "accept-encoding"}
     for key, val in request.headers.items():
         if key.lower() not in skip:
             fwd_headers[key] = val
@@ -931,19 +986,33 @@ async def api_proxy(path: str, request: Request):
                     headers=fwd_headers,
                     content=body,
                 ) as resp:
+                    # If upstream returns an error, collect the body and raise so
+                    # the caller gets the proper HTTP status instead of a broken SSE stream.
+                    if resp.status_code >= 400:
+                        error_body = b""
+                        async for chunk in resp.aiter_bytes():
+                            error_body += chunk
+                        raise _UpstreamError(resp.status_code, error_body, resp.headers.get("content-type"))
                     async for chunk in resp.aiter_bytes():
                         yield chunk
 
-        return StreamingResponse(
-            event_generator(),
-            status_code=200,
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
-        )
+        try:
+            return StreamingResponse(
+                event_generator(),
+                status_code=200,
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+        except _UpstreamError as e:
+            return Response(
+                content=e.body,
+                status_code=e.status_code,
+                media_type=e.content_type or "application/json",
+            )
 
     # ── Regular (buffered) proxy ──
     async with httpx.AsyncClient(timeout=180.0) as client:
@@ -958,7 +1027,7 @@ async def api_proxy(path: str, request: Request):
     # so headers already reflect the decompressed body (no content-encoding).
     # Only strip true hop-by-hop headers.
     resp_headers = dict(resp.headers)
-    for h in ("transfer-encoding", "connection", "keep-alive"):
+    for h in ("transfer-encoding", "connection", "keep-alive", "content-encoding"):
         resp_headers.pop(h, None)
 
     return Response(
@@ -968,6 +1037,143 @@ async def api_proxy(path: str, request: Request):
         media_type=resp.headers.get("content-type"),
     )
 
+
+@app.post("/log/save")
+async def save_llm_log(req: LogRequest):
+    """Save full LLM interaction to disk for debugging.
+
+    Writes timestamped JSON files to llm_logs/ directory containing:
+    - Complete system prompt (to see what instructions the model received)
+    - User prompt
+    - Full response text (code + rationale)
+    - Thinking blocks if captured (model's reasoning process)
+    - Intent analysis results + preset matching guidance
+    - Timing and error metadata
+    """
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    ts = time.strftime("%Y-%m-%d_%H-%M-%S")
+    safe_model = req.model.replace("/", "_").replace(":", "_") if req.model else "unknown"
+    filename = f"{ts}_{safe_model}_{req.mode}.json"
+    filepath = LOG_DIR / filename
+
+    log_entry = {
+        "timestamp": ts,
+        "model": req.model,
+        "mode": req.mode,
+        "duration_sec": req.duration_sec,
+        "intent": req.intent,
+        "translation_error": req.translation_error,
+        "preset_guidance": req.preset_guidance,
+        "system_prompt_length": len(req.system_prompt),
+        "system_prompt": req.system_prompt,
+        "user_prompt": req.user_prompt,
+        "user_prompt_length": len(req.user_prompt),
+        "full_response_length": len(req.full_response),
+        "full_response": req.full_response,
+        "thinking_blocks": req.thinking_blocks,
+        "thinking_count": len(req.thinking_blocks),
+    }
+
+    filepath.write_text(json.dumps(log_entry, ensure_ascii=False, indent=2))
+
+    print(f"[log] Saved: {filename} ({len(req.full_response)} chars response, "
+          f"{len(req.thinking_blocks)} thinking blocks, {req.duration_sec:.1f}s)")
+
+    return {"ok": True, "file": filename, "path": str(filepath)}
+
+
+@app.get("/log/list")
+async def list_logs():
+    """List saved LLM interaction logs."""
+    if not LOG_DIR.exists():
+        return {"logs": []}
+    files = sorted(LOG_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    return {
+        "count": len(files),
+        "logs": [{"file": f.name, "size": f.stat().st_size, "mtime": f.stat().st_mtime} for f in files[:50]]
+    }
+
+
+
+# ============================================================
+# Essentia Audio Analysis — style fingerprint extraction
+# ============================================================
+
+from essentia_analysis import analyze_audio as essentia_analyze, HAS_ESSENTIA
+
+@app.post("/essentia/analyze")
+async def essentia_analyze_endpoint(file: UploadFile = File(...)):
+    """Upload an audio file and get a style profile back.
+    
+    Returns comprehensive musical analysis:
+    - genre (primary + top3 with confidence)
+    - bpm (value + confidence)  
+    - key (value + confidence)
+    - mood (primary + arousal/valence + per-mood scores)
+    - instruments (inferred from genre)
+    - soundTags (character descriptors for Vital matching)
+    - danceability (probability)
+    - voice (presence + probability)
+    - description (natural language summary)
+    
+    Accepts: WAV, MP3, FLAC, OGG, M4A
+    """
+    import tempfile, os
+    
+    # Save upload to temp file (essentia needs a file path)
+    suffix = os.path.splitext(file.filename or "audio.wav")[1] or ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    
+    try:
+        result = essentia_analyze(tmp_path)
+        return {
+            "status": "ok",
+            "essentia_available": HAS_ESSENTIA,
+            **result,
+        }
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+
+
+@app.get("/essentia/status")
+async def essentia_status():
+    """Check if Essentia analysis is available and list loaded models."""
+    from pathlib import Path
+    from essentia_analysis import MODELS_DIR, CACHE_DIR
+    models_available = []
+    models_missing = []
+    
+    expected_models = [
+        "msd-musicnn-1.pb",
+        "mood_relaxed-msd-musicnn-1.pb",
+        "mood_sad-msd-musicnn-1.pb",
+        "mood_party-msd-musicnn-1.pb",
+        "arousal_valence-msd-musicnn-1.pb",
+        "danceability-msd-musicnn-1.pb",
+        "key_edma-msd-musicnn-1.pb",
+        "voice_instrumental-msd-musicnn-1.pb",
+    ]
+    
+    for model in expected_models:
+        (models_available if (MODELS_DIR / model).exists() else models_missing).append(model)
+    
+    return {
+        "essentia_installed": HAS_ESSENTIA,
+        "models_dir": str(MODELS_DIR),
+        "models_dir_exists": MODELS_DIR.exists(),
+        "models_available": models_available,
+        "models_missing": models_missing,
+        "models_count": len(models_available),
+        "cache_dir": str(CACHE_DIR),
+        "cache_exists": CACHE_DIR.exists(),
+    }
 
 @app.get("/health")
 async def health():

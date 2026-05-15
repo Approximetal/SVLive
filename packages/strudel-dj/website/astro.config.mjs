@@ -136,6 +136,11 @@ export default defineConfig({
   base,
   vite: {
     plugins: [bundleAudioWorkletPlugin()],
+    optimizeDeps: {
+      // Exclude superdough from pre-bundling so its full export set
+      // (including vital, vitalHealth, etc.) is available at runtime.
+      exclude: ['superdough'],
+    },
     ssr: {
       // Example: Force a broken package to skip SSR processing, if needed
       // external: ['fraction.js'], // https://github.com/infusion/Fraction.js/issues/51
