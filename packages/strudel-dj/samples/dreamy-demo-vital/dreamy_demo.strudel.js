@@ -4,7 +4,7 @@ let cpm = 28.0;
 
 // Load pre-rendered Vital samples from GitHub.
 // Direct raw URL matches the common strudel.cc sample-pack pattern and avoids cached github: resolution.
-await samples('https://raw.githubusercontent.com/Approximetal/SVLive/09dcd89c3db46dd08aa067bc1425316574f532ef/packages/strudel-dj/samples/dreamy-demo-vital/strudel.json')
+await samples('https://raw.githubusercontent.com/Approximetal/SVLive/69b9ff6de7488dd56b51cd25d36b3e3afca8db23/packages/strudel-dj/samples/dreamy-demo-vital/strudel.json')
 
 let KEY = 'vital_keystation';
 let PAD = 'vital_flute_1';
