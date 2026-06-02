@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+render_cache/
+essentia_cache/
+llm_logs/
+test_*.py
+.git
+.DS_Store
+README.md

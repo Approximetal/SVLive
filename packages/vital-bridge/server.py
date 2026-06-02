@@ -45,6 +45,10 @@ SAMPLE_RATE = 44100
 BPM = 120.0
 CACHE_DIR = Path(__file__).parent / "render_cache"
 LOG_DIR = Path(__file__).parent / "llm_logs"
+
+# Maximum cache size in MB. 0 = unlimited.
+# Set via env var VITAL_CACHE_MAX_MB (default: 500 MB)
+MAX_CACHE_MB = float(os.environ.get("VITAL_CACHE_MAX_MB", "500"))
 def _resolve_presets_dir(env_key: str, *fallbacks: str) -> Path:
     """Resolve a presets directory from env var, falling back to the first
     path that actually exists on disk (or the first fallback if none do)."""
@@ -89,6 +93,12 @@ async def lifespan(app: FastAPI):
     print(f"[vital-bridge] Vita {vita.__version__} engine ready")
     print(f"[vital-bridge] Presets dir: {PRESETS_DIR}")
     print(f"[vital-bridge] Cache dir: {CACHE_DIR}")
+    print(f"[vital-bridge] Cache limit: {MAX_CACHE_MB:.0f} MB")
+    # Prune on startup
+    prune_result = prune_render_cache()
+    if prune_result.get("deleted", 0) > 0:
+        print(f"[vital-bridge] Cache prune: deleted {prune_result['deleted']} files "
+              f"({prune_result['freed_mb']} MB), now {prune_result['after_mb']} MB")
     yield
     synth = None
 
@@ -230,6 +240,60 @@ def get_macro_cache_suffix(macros: Optional[dict]) -> str:
                 parts.append(f"m{i}_{int(macros[k]*100)}")
                 break
     return "_" + "_".join(parts) if parts else ""
+
+
+def prune_render_cache() -> dict:
+    """Delete oldest cached WAV files if total size exceeds MAX_CACHE_MB.
+
+    Returns a dict with pruning statistics for logging.
+    """
+    if MAX_CACHE_MB <= 0 or not CACHE_DIR.is_dir():
+        return {"action": "skipped", "reason": "limit disabled or no cache dir"}
+
+    wav_files = sorted(CACHE_DIR.glob("*.wav"), key=lambda f: f.stat().st_mtime)
+    total_bytes = sum(f.stat().st_size for f in wav_files)
+    limit_bytes = int(MAX_CACHE_MB * 1024 * 1024)
+    excess = total_bytes - limit_bytes
+
+    if excess <= 0:
+        return {"action": "ok", "size_mb": round(total_bytes / (1024 * 1024), 1),
+                "limit_mb": MAX_CACHE_MB, "count": len(wav_files), "deleted": 0}
+
+    deleted = 0
+    freed = 0
+    for f in wav_files:
+        if total_bytes - freed <= limit_bytes:
+            break
+        sz = f.stat().st_size
+        try:
+            f.unlink()
+            freed += sz
+            deleted += 1
+        except OSError:
+            pass  # race: another process may have removed it already
+
+    return {"action": "pruned", "deleted": deleted,
+            "freed_mb": round(freed / (1024 * 1024), 1),
+            "before_mb": round(total_bytes / (1024 * 1024), 1),
+            "after_mb": round((total_bytes - freed) / (1024 * 1024), 1),
+            "limit_mb": MAX_CACHE_MB}
+
+
+_write_counter = 0
+_PRUNE_INTERVAL = 50  # only check size every N cache writes
+
+
+def maybe_prune_cache() -> None:
+    """Throttled cache pruning — only checks size every _PRUNE_INTERVAL writes."""
+    global _write_counter
+    _write_counter += 1
+    if _write_counter < _PRUNE_INTERVAL:
+        return
+    _write_counter = 0
+    result = prune_render_cache()
+    if result.get("deleted", 0) > 0:
+        print(f"[vital-bridge] Cache prune: deleted {result['deleted']} files "
+              f"({result['freed_mb']} MB), now {result['after_mb']} MB")
 
 
 def scan_presets(base_dir: Path, source: str = "default") -> list[dict]:
@@ -528,6 +592,7 @@ async def render_single(req: RenderRequest):
 
         # Save to cache
         cache_path.write_bytes(wav_bytes)
+        maybe_prune_cache()
 
         # Restore original preset if macros were applied
         if req.macros and current_preset_hash:
@@ -584,6 +649,10 @@ async def render_batch(req: RenderBatchRequest):
             "url": f"/cache/{cache_path.name}",
         })
 
+    # Prune after batch (not inside loop)
+    if rendered_count > 0:
+        maybe_prune_cache()
+
     elapsed = (time.time() - t0) * 1000
 
     return {
@@ -627,7 +696,11 @@ async def render_chromatic(
             wav_bytes = numpy_to_wav_bytes(audio)
             cache_path.write_bytes(wav_bytes)
             rendered += 1
-    
+
+    # Prune after chromatic batch
+    if rendered > 0:
+        maybe_prune_cache()
+
     elapsed = (time.time() - t0) * 1000
     
     return {
@@ -649,6 +722,7 @@ async def cache_stats():
         "count": len(files),
         "size_bytes": total_size,
         "size_mb": round(total_size / (1024 * 1024), 2),
+        "limit_mb": MAX_CACHE_MB if MAX_CACHE_MB > 0 else None,
         "cache_dir": str(CACHE_DIR),
     }
 
@@ -743,6 +817,7 @@ async def export_preset(req: ExportRequest):
         return f"{name}{oct}"
 
     # Render all notes
+    rendered_count = 0
     rendered_notes = {}
     for note in notes:
         cache_path = get_cache_path(current_preset_hash, note, req.velocity,
@@ -753,9 +828,14 @@ async def export_preset(req: ExportRequest):
             audio = render_note(note, req.velocity, req.note_dur, req.render_dur)
             wav_bytes = numpy_to_wav_bytes(audio)
             cache_path.write_bytes(wav_bytes)
+            rendered_count += 1
 
         note_name = midi_to_note_name(note)
         rendered_notes[note_name] = wav_bytes
+
+    # Prune after export batch
+    if rendered_count > 0:
+        maybe_prune_cache()
 
     elapsed = (time.time() - t0) * 1000
 

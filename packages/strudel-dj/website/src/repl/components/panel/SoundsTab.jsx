@@ -1,7 +1,7 @@
 import useEvent from '@src/useEvent.mjs';
 import { useStore } from '@nanostores/react';
 import { getAudioContext, soundMap, connectToDestination } from '@strudel/webaudio';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { settingsMap, soundFilterType, useSettings } from '../../../settings.mjs';
 import { ButtonGroup } from './Forms.jsx';
 import ImportSoundsButton from './ImportSoundsButton.jsx';
@@ -10,6 +10,7 @@ import { ActionButton } from '../button/action-button.jsx';
 import { confirmDialog } from '@src/repl/util.mjs';
 import { clearIDB, userSamplesDBConfig } from '@src/repl/idbutils.mjs';
 import { prebake } from '@src/repl/prebake.mjs';
+import BRIDGE_URL from '../../bridgeConfig.js';
 
 const getSamples = (samples) =>
   Array.isArray(samples) ? samples.length : typeof samples === 'object' ? Object.values(samples).length : 1;
@@ -216,14 +217,27 @@ function VitalPresetsPanel({ context, search }) {
   const [presets, setPresets] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingPreset, setLoadingPreset] = useState(null);
-  const [activePreset, setActivePreset] = useState(null);
   const [packFilter, setPackFilter] = useState('all');
   const [bridgeStatus, setBridgeStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
   const [error, setError] = useState(null);
+  const FAVORITES_KEY = 'vital_favorite_presets';
   const [previewingPreset, setPreviewingPreset] = useState(null);
-  const previewSourceRef = useRef(null);
-
-  const BRIDGE_URL = 'http://localhost:8765';
+  const [selectedPreset, setSelectedPreset] = useState(null); // preset selected for detail preview (no overwrite)
+  const [addedPresets, setAddedPresets] = useState(new Set()); // track which presets user has added
+  const [favorites, setFavorites] = useState(() => {
+    // Load from localStorage on mount
+    try {
+      const saved = localStorage.getItem(FAVORITES_KEY);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [vitalGain, setVitalGain] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vital_preview_gain');
+      return saved ? parseFloat(saved) : 0.5;
+    } catch { return 0.5; }
+  });
+  const originalCodeRef = useRef(null); // saved editor code for preview restore
 
   // Check bridge status on mount
   useEffect(() => {
@@ -237,7 +251,16 @@ function VitalPresetsPanel({ context, search }) {
         }
       })
       .then((data) => {
-        if (data) setPresets(data.presets);
+        if (data?.presets) {
+          // Deduplicate by path (some presets may appear in multiple directories)
+          const seen = new Set();
+          const deduped = data.presets.filter(p => {
+            if (seen.has(p.path)) return false;
+            seen.add(p.path);
+            return true;
+          });
+          setPresets(deduped);
+        }
       })
       .catch(() => setBridgeStatus('offline'));
   }, []);
@@ -261,38 +284,64 @@ function VitalPresetsPanel({ context, search }) {
           p.pack.toLowerCase().includes(search.toLowerCase()),
       );
     }
-    return list;
-  }, [presets, packFilter, search]);
+    // Sort: favorites first, then alphabetical
+    return [...list].sort((a, b) => {
+      const aFav = favorites.has(a.path) ? 0 : 1;
+      const bFav = favorites.has(b.path) ? 0 : 1;
+      if (aFav !== bFav) return aFav - bFav;
+      return a.name.localeCompare(b.name);
+    });
+  }, [presets, packFilter, search, favorites]);
 
-  const handleLoadPreset = async (preset) => {
-    if (!context?.editorRef?.current) return;
-    setLoading(true);
-    setLoadingPreset(preset.name);
-    setError(null);
+  // Toggle favorite and persist to localStorage
+  const toggleFavorite = (preset, e) => {
+    if (e) e.stopPropagation();
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(preset.path)) {
+        next.delete(preset.path);
+      } else {
+        next.add(preset.path);
+      }
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  };
 
-    try {
-      // Generate strudel code that uses vital()
-      // IMPORTANT: use single quotes for vital() argument — double quotes are transformed to mini-notation by the transpiler!
-      const sanitizedName = preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-      const code = `// Vital: ${preset.name} (${preset.pack})
-await vital('${preset.name}')
+  // Build the strudel code for a preset
+  const buildPresetCode = (preset) => {
+    const sanitizedName = preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    // Escape single quotes in name to avoid breaking vital('...') string
+    const escapedName = preset.name.replace(/'/g, "\\'");
+    return {
+      loadLine: `await vital('${escapedName}')`,
+      playBlock: `note("c3 e3 g3 c4")\n  .s("vital_${sanitizedName}")\n  .release(0.5)\n  .gain(${vitalGain})`,
+      fullCode: `// Vital: ${escapedName} (${preset.pack})
+await vital('${escapedName}')
 
 note("c3 e3 g3 c4")
   .s("vital_${sanitizedName}")
   .release(0.5)
-  .gain(0.8)`;
+  .gain(${vitalGain})`,
+      sanitizedName,
+    };
+  };
 
-      const editor = context.editorRef.current;
-      editor.setCode(code);
-      editor.evaluate();
-      setActivePreset(preset.name);
-    } catch (err) {
-      console.error('[Vital] Failed to load preset:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      setLoadingPreset(null);
-    }
+  // Show detail/preview of a preset — does NOT overwrite the main editor
+  const handleSelectPreset = (preset) => {
+    setSelectedPreset(selectedPreset?.path === preset.path ? null : preset);
+    setError(null);
+  };
+
+  // Add preset loading code to the main editor without overwriting existing code
+  const handleAddToEditor = (preset, e) => {
+    if (e) e.stopPropagation();
+    if (!context?.editorRef?.current) return;
+
+    const { loadLine } = buildPresetCode(preset);
+    context.editorRef.current.appendCode('\n' + loadLine + '\n');
+    setAddedPresets(prev => new Set([...prev, preset.path]));
+    setError(null);
   };
 
   // Upload .vital file handler
@@ -312,7 +361,7 @@ await vitalUpload(/* file */) // Note: Use drag & drop in editor for file upload
 note("c3 e3 g3 c4")
   .s("vital_${sanitizedName}")
   .release(0.5)
-  .gain(0.8)`;
+  .gain(${vitalGain})`;
 
       // Actually upload via bridge
       const formData = new FormData();
@@ -330,59 +379,62 @@ note("c3 e3 g3 c4")
     }
   };
 
-  // Preview a preset (render a single note and play it without changing editor)
+  // Preview a preset — evaluate full code (load + arpeggio loop) in the REPL,
+  // saving/restoring the editor's original code so the user's work is preserved.
   const handlePreview = async (preset, e) => {
-    e.stopPropagation(); // Don't trigger the parent onClick (handleLoadPreset)
+    e.stopPropagation();
 
-    // Stop any currently playing preview
-    if (previewSourceRef.current) {
-      try { previewSourceRef.current.stop(); } catch {}
-      previewSourceRef.current = null;
-    }
+    const editor = context?.editorRef?.current;
+    if (!editor?.repl) return;
 
-    // If we're already previewing this preset, just stop
+    // If we're already previewing this preset, stop and restore
     if (previewingPreset === preset.name) {
+      editor.repl.scheduler.stop();
+      // Restore original code
+      if (originalCodeRef.current != null) {
+        try { await editor.repl.evaluate(originalCodeRef.current, false); } catch {}
+        originalCodeRef.current = null;
+      }
       setPreviewingPreset(null);
       return;
+    }
+
+    // Stop any currently playing preview before starting a new one
+    if (previewingPreset) {
+      editor.repl.scheduler.stop();
+      if (originalCodeRef.current != null) {
+        try { await editor.repl.evaluate(originalCodeRef.current, false); } catch {}
+        originalCodeRef.current = null;
+      }
     }
 
     setPreviewingPreset(preset.name);
     setError(null);
 
     try {
-      // 1. Load the preset
-      await fetch(`${BRIDGE_URL}/load`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: preset.path }),
-      });
+      // Save the user's current code so we can restore it later
+      if (originalCodeRef.current == null) {
+        originalCodeRef.current = editor.code;
+      }
 
-      // 2. Render a single note (C3 = MIDI 60) — returns raw WAV bytes
-      const renderRes = await fetch(`${BRIDGE_URL}/render`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: 60, velocity: 0.7, note_dur: 1.0, render_dur: 3.0 }),
-      });
-      if (!renderRes.ok) throw new Error('Render failed');
+      // Evaluate the full code (load preset + arpeggio loop) in the REPL.
+      // This hushes the current pattern and plays the preview loop.
+      const { fullCode } = buildPresetCode(preset);
+      await editor.repl.evaluate(fullCode, true);
 
-      // 3. Decode and play the WAV
-      const arrayBuffer = await renderRes.arrayBuffer();
-      const ctx = getAudioContext();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      connectToDestination(source);
-      source.start(ctx.currentTime);
-      source.onended = () => {
-        setPreviewingPreset(null);
-        previewSourceRef.current = null;
-      };
-      previewSourceRef.current = source;
+      // Check if evaluation had an error (REPL catches internally, doesn't throw)
+      if (editor.repl.state.evalError) {
+        throw editor.repl.state.evalError;
+      }
     } catch (err) {
       console.error('[Vital] Preview failed:', err);
       setError(`Preview failed: ${err.message}`);
       setPreviewingPreset(null);
+      // Restore original code
+      if (originalCodeRef.current != null) {
+        try { await editor.repl.evaluate(originalCodeRef.current, false); } catch {}
+        originalCodeRef.current = null;
+      }
     }
   };
 
@@ -500,62 +552,141 @@ uvicorn server:app --port 8765`}
         </div>
       </div>
 
-      {/* Preset count & status */}
+      {/* Preset count, volume & status */}
       <div className="text-xs text-white/40 shrink-0">
-        {filteredPresets.length} presets
-        {loading && <span className="ml-2 text-yellow-400">⏳ rendering {loadingPreset}...</span>}
-        {previewingPreset && !loading && <span className="ml-2 text-purple-400">🔊 previewing {previewingPreset}</span>}
-        {error && <span className="ml-2 text-red-400">❌ {error}</span>}
+        <div className="flex items-center gap-3">
+          <span>{filteredPresets.length} presets</span>
+          {favorites.size > 0 && <span className="text-red-400">♥{favorites.size}</span>}
+          <label className="flex items-center gap-1 flex-1 justify-end" title="Preview volume">
+            <span>🔈</span>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={vitalGain}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setVitalGain(val);
+                localStorage.setItem('vital_preview_gain', String(val));
+              }}
+              className="w-20 h-3 accent-purple-500 cursor-pointer"
+            />
+            <span className="w-7 text-right">{Math.round(vitalGain * 100)}%</span>
+          </label>
+        </div>
+        {(loading || previewingPreset || error) && (
+          <div className="mt-0.5">
+            {loading && <span className="text-yellow-400">⏳ rendering {loadingPreset}...</span>}
+            {previewingPreset && !loading && <span className="text-purple-400">🔊 previewing {previewingPreset}</span>}
+            {error && <span className="text-red-400">❌ {error}</span>}
+          </div>
+        )}
       </div>
 
       {/* Preset list */}
       <div className="overflow-auto grow min-h-0">
-        {filteredPresets.map((preset) => (
-          <div
-            key={preset.path}
-            onClick={() => handleLoadPreset(preset)}
-            className={`cursor-pointer p-2 rounded mb-1 border transition-colors ${
-              activePreset === preset.name
-                ? 'border-purple-500/50 bg-purple-500/10'
-                : 'border-transparent hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {/* Preview/audition button */}
-              <button
-                className={`w-6 h-6 rounded flex items-center justify-center text-sm shrink-0 transition-colors ${
-                  previewingPreset === preset.name
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
-                }`}
-                onClick={(e) => handlePreview(preset, e)}
-                title="Preview sound"
-              >
-                {previewingPreset === preset.name ? '■' : '▶'}
-              </button>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm truncate">{preset.name}</div>
-                <div className="text-xs text-white/40">
-                  <span>{preset.pack}</span>
+        {filteredPresets.map((preset) => {
+          const isSelected = selectedPreset?.path === preset.path;
+          const isAdded = addedPresets.has(preset.path);
+          const code = buildPresetCode(preset);
+          return (
+          <div key={preset.path}>
+            <div
+              onClick={() => handleSelectPreset(preset)}
+              className={`cursor-pointer p-2 rounded mb-1 border transition-colors ${
+                isSelected
+                  ? 'border-purple-500/50 bg-purple-500/10'
+                  : 'border-transparent hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {/* Preview/audition button */}
+                <button
+                  className={`w-6 h-6 rounded flex items-center justify-center text-sm shrink-0 transition-colors ${
+                    previewingPreset === preset.name
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                  }`}
+                  onClick={(e) => handlePreview(preset, e)}
+                  title="Preview sound"
+                >
+                  {previewingPreset === preset.name ? '■' : '▶'}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{preset.name}</div>
+                  <div className="text-xs text-white/40">
+                    <span>{preset.pack}</span>
+                  </div>
+                </div>
+                {isAdded && (
+                  <span className="text-xs text-green-400 shrink-0" title="Added to editor">✓</span>
+                )}
+                {loadingPreset === preset.name && (
+                  <span className="text-xs animate-pulse">⏳</span>
+                )}
+                {/* Add to editor button */}
+                <button
+                  className={`w-6 h-6 rounded flex items-center justify-center text-xs shrink-0 transition-colors ${
+                    isAdded
+                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                      : 'bg-white/10 text-white/60 hover:bg-blue-500/30 hover:text-blue-300'
+                  }`}
+                  onClick={(e) => handleAddToEditor(preset, e)}
+                  title={isAdded ? 'Already added to editor' : 'Add to editor'}
+                >
+                  +
+                </button>
+                {/* Favorite button */}
+                <button
+                  className={`w-6 h-6 rounded flex items-center justify-center text-xs shrink-0 transition-colors ${
+                    favorites.has(preset.path)
+                      ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                      : 'bg-white/10 text-white/40 hover:bg-red-500/20 hover:text-red-400'
+                  }`}
+                  onClick={(e) => toggleFavorite(preset, e)}
+                  title={favorites.has(preset.path) ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  {favorites.has(preset.path) ? '♥' : '♡'}
+                </button>
+                {/* Export button */}
+                <button
+                  className="w-6 h-6 rounded flex items-center justify-center text-xs shrink-0 bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExport(preset);
+                  }}
+                  title="Export as WAV pack"
+                >
+                  ⬇
+                </button>
+              </div>
+            </div>
+
+            {/* Inline detail/preview panel — shown when preset is selected */}
+            {isSelected && (
+              <div className="mb-2 ml-8 mr-1 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-white/50 font-mono">
+                    {preset.pack} / {preset.name}
+                  </span>
+                  <button
+                    className="px-2 py-0.5 text-xs rounded bg-purple-600/30 text-purple-300 hover:bg-purple-600/50"
+                    onClick={() => handleAddToEditor(preset)}
+                  >
+                    + Add to Editor
+                  </button>
+                </div>
+                <pre className="text-xs bg-black/30 rounded p-2 overflow-x-auto text-green-300 font-mono whitespace-pre-wrap">
+{code.fullCode}
+                </pre>
+                <div className="text-xs text-white/40 mt-1">
+                  Sound key: <code className="text-yellow-300">vital_{code.sanitizedName}</code>
                 </div>
               </div>
-              {loadingPreset === preset.name && (
-                <span className="text-xs animate-pulse">⏳</span>
-              )}
-              {/* Export button */}
-              <button
-                className="w-6 h-6 rounded flex items-center justify-center text-xs shrink-0 bg-white/10 text-white/40 hover:bg-white/20 hover:text-white transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleExport(preset);
-                }}
-                title="Export as WAV pack"
-              >
-                ⬇
-              </button>
-            </div>
+            )}
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );

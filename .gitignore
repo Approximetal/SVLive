@@ -1,43 +1,31 @@
-# === Node ===
-node_modules/
-.pnpm/
-.pnpm-store/
-dist/
-*.tsbuildinfo
+# Audio logs and renders
+omni-demo/logs/
+*.wav
 
-# === Python ===
-__pycache__/
-*.pyc
-*.pyo
-venv/
-.venv/
+# Vital wavetables (generated/downloaded, not source)
+**/vital-wavetables/
+**/vital-renders/
 
-# === Vital Bridge ===
-packages/vital-bridge/render_cache/
-packages/vital-bridge/test_output/
+# Environment files
+.env
+.env.local
+.env.*.local
 
-# === OS ===
+# OS
 .DS_Store
 Thumbs.db
 
-# === IDE ===
-.vscode/
+# IDE
 .idea/
+*.swp
+*.swo
 
-# === Env ===
-.env
-.env.local
-README.zh.md
-packages/strudel-dj/website/src/repl/ai/modelProviders.local.json
+# API keys / local config
+*modelProviders.local.json
 
-# === Docs (plan files, don't commit) ===
-docs/*.md
-!docs/CLAUDE.md
+# Python cache
+__pycache__/
 
-# === Vital Bridge runtime files ===
+# Vital bridge caches and logs
 packages/vital-bridge/essentia_cache/
 packages/vital-bridge/llm_logs/
-packages/vital-bridge/preset_tags.json
-
-# === Misc ===
-doc.json

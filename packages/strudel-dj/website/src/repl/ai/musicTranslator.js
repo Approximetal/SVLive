@@ -79,7 +79,7 @@ const DEFAULT_TERMS = {
  */
 export async function translatePrompt(client, userPrompt, modelId) {
   // Only use structured output on official Anthropic API; third-party providers
-  // (DeepSeek, Kimi, yxai88, etc.) don't support the beta endpoint.
+  // may not support the beta endpoint.
   const resolvedModel = modelId || 'claude-sonnet-4-6';
   const isAnthropicOfficial = !client.baseURL || client.baseURL.includes('api.anthropic.com');
 
@@ -145,8 +145,10 @@ function normalizeTerms(result, userPrompt) {
 // Vital Preset Matching
 // ============================================================
 
-/** Base URL for vital-bridge — configurable for different environments */
-let vitalBridgeURL = 'http://localhost:8765';
+import BRIDGE_URL from '../bridgeConfig.js';
+
+/** Base URL for vital-bridge — configurable via VITE_BRIDGE_URL env var */
+let vitalBridgeURL = BRIDGE_URL;
 
 export function setVitalBridgeURL(url) {
   vitalBridgeURL = url;

@@ -3,6 +3,7 @@ import { defaultSettings, settingsMap, useSettings } from '../../../settings.mjs
 import { themes } from '@strudel/codemirror';
 import { Textbox } from '../textbox/Textbox.jsx';
 import { isUdels } from '../../util.mjs';
+import BRIDGE_URL from '../../bridgeConfig.js';
 import { ButtonGroup } from './Forms.jsx';
 import { AudioDeviceSelector } from './AudioDeviceSelector.jsx';
 import { AudioEngineTargetSelector } from './AudioEngineTargetSelector.jsx';
@@ -163,7 +164,7 @@ export function SettingsTab({ started }) {
   // AI API settings from localStorage
   const [aiProvider, setAiProvider] = useState(() => {
     const saved = localStorage.getItem('ai_provider');
-    return saved && BUILTIN_PROVIDERS[saved] ? saved : 'deepseek';
+    return saved && BUILTIN_PROVIDERS[saved] ? saved : 'claude-official';
   });
   const [aiBaseURL, setAiBaseURL] = useState(() => localStorage.getItem('anthropic_base_url') || '');
   const [aiApiKey, setAiApiKey] = useState(() => {
@@ -219,13 +220,11 @@ export function SettingsTab({ started }) {
   }, []);
 
   // Persist the default provider to localStorage on first mount if nothing is saved.
-  // Without this, AITab falls back to anthropic.provider.json (yxai88) even though
-  // Settings visually shows "DeepSeek" as the selected provider.
   useEffect(() => {
     const hasProvider = !!localStorage.getItem('ai_provider');
     const hasBaseURL = !!localStorage.getItem('anthropic_base_url');
     if (hasProvider && hasBaseURL) return; // User already configured something
-    const providerId = aiProvider; // 'deepseek' by default (from useState initializer)
+    const providerId = aiProvider; // 'claude-official' by default
     const preset = BUILTIN_PROVIDERS[providerId];
     if (!preset) return;
     if (!hasProvider) {
@@ -693,7 +692,7 @@ export function SettingsTab({ started }) {
 // Vital Cache Panel
 // ============================================================
 
-const BRIDGE_URL = 'http://localhost:8765';
+// BRIDGE_URL imported from ../../bridgeConfig.js
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;

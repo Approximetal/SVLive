@@ -7,6 +7,7 @@
 
 import { GENRE_SOUND_MAP, VERIFIED_SYNTHS } from './sounds.js';
 import { getExampleForGenre, getAdvancedExampleForGenre } from './templates.js';
+import BRIDGE_URL from '../bridgeConfig.js';
 
 // Cache for sound list to avoid repeated queries
 let _soundListCache = null;
@@ -68,7 +69,7 @@ async function buildSoundListSection() {
 
   // ── Vital presets (from vital-bridge) ──
   try {
-    const r = await fetch('http://localhost:8765/presets/tags', {
+    const r = await fetch(BRIDGE_URL + '/presets/tags', {
       signal: AbortSignal.timeout(3000),
     });
     if (r.ok) {

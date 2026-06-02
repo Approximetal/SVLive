@@ -8,27 +8,6 @@
 
 /** Built-in provider presets (no API keys — for reference/config) */
 export const BUILTIN_PROVIDERS = {
-  'yxai88': {
-    name: 'yxai88',
-    baseURL: 'https://api.yxai88.com',
-    authStyle: 'apiKey',
-    model: 'claude-sonnet-4-6',
-    description: 'Anthropic-native compatible proxy (api.yxai88.com, x-api-key auth)',
-  },
-  'deepseek': {
-    name: 'DeepSeek',
-    baseURL: 'https://api.deepseek.com/anthropic',
-    authStyle: 'authToken',
-    model: 'deepseek-v4-pro',
-    description: 'DeepSeek V4 Pro via official Anthropic-compatible endpoint',
-  },
-  'kimi': {
-    name: 'Kimi Code',
-    baseURL: 'https://api.kimi.com/coding',
-    authStyle: 'authToken',
-    model: 'kimi-for-coding',
-    description: 'Kimi K2.6 via Anthropic-compatible coding endpoint (api.kimi.com/coding)',
-  },
   'claude-official': {
     name: 'Claude Official (Anthropic)',
     baseURL: '',
@@ -134,19 +113,8 @@ export async function fetchProviderModels(baseURL, apiKey, authStyle) {
 
 /**
  * Static model suggestions (fallback when dynamic fetch is unavailable).
- * Covers Anthropic official, yxai88, and common third-party providers.
  */
 export function getStaticModelSuggestions(providerId) {
-  // Provider-specific models
-  const providerModels = {
-    deepseek: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3-1'],
-    kimi: ['kimi-for-coding', 'kimi-k2.6-thinking', 'kimi-k2.6'],
-  };
-
-  if (providerModels[providerId]) {
-    return providerModels[providerId];
-  }
-
   // Default: full Anthropic Claude model list
   return [
     'claude-sonnet-4-6',

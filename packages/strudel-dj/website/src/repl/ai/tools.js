@@ -8,6 +8,7 @@
 
 import { evaluate, State, TimeSpan, isPattern, silence } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
+import BRIDGE_URL from '../bridgeConfig.js';
 
 // ============================================================
 // Tool Definitions (Anthropic-compatible schema)
@@ -196,7 +197,7 @@ export async function handleListSounds(input) {
 
       if (vitalTag) {
         // Specific category: search for actual preset names
-        const r = await fetch(`http://localhost:8765/presets/search?tag=${encodeURIComponent(vitalTag)}`, {
+        const r = await fetch(`${BRIDGE_URL}/presets/search?tag=${encodeURIComponent(vitalTag)}`, {
           signal: AbortSignal.timeout(5000),
         });
         if (r.ok) {
@@ -217,7 +218,7 @@ export async function handleListSounds(input) {
         }
       } else {
         // All: show type counts only (too many to list)
-        const r = await fetch('http://localhost:8765/presets/tags', {
+        const r = await fetch(BRIDGE_URL + '/presets/tags', {
           signal: AbortSignal.timeout(3000),
         });
         if (r.ok) {

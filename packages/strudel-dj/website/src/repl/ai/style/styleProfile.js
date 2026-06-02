@@ -11,7 +11,7 @@
  *   → promptBuilder → final system prompt
  */
 
-const BRIDGE_URL = 'http://localhost:8765';
+import BRIDGE_URL from '../../bridgeConfig.js';
 
 /**
  * Send an audio file to the Essentia service for analysis.

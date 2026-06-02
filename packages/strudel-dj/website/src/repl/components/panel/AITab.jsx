@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { evaluate, State, TimeSpan, isPattern, logger } from '@strudel/core';
 import { transpiler } from '@strudel/transpiler';
 import { useSettings } from '../../../settings.mjs';
+import BRIDGE_URL from '../../bridgeConfig.js';
 import cx from '@src/cx.mjs';
 import { CheckIcon, XMarkIcon, PlayIcon, StopIcon, SparklesIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/16/solid';
 
@@ -27,14 +28,12 @@ import VISUAL_SYSTEM_PROMPT from '../../ai/prompts/system-visual.txt?raw';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
 /**
- * 常见模型 ID（datalist 点选）；含 yxai88 文档「第六节 · 支持的模型清单」中的主 ID，
- * 具体以令牌分组 + 后台「模型广场」为准，也可在输入框里任意填写。
- * @see https://yxai88.com/docs/
+ * Common Claude model IDs for datalist suggestions.
+ * Users can also type any model ID manually.
  */
 const ANTHROPIC_MODEL_SUGGESTIONS = [
   DEFAULT_ANTHROPIC_MODEL,
   'claude-sonnet-4-5',
-  // Sonnet 4.x（yxai88 文档 · 性价比线）
   'claude-sonnet-4-6-thinking',
   'claude-sonnet-4-5-20250929',
   'claude-sonnet-4-5-20250929-thinking',
@@ -201,7 +200,7 @@ function createAnthropicClient(secret, baseURL, authStylePref) {
 
   // Route through vital-bridge proxy to avoid CORS blocks in browser.
   // The bridge's /api-proxy endpoint forwards to the real provider (X-Proxy-Target header).
-  const BRIDGE_URL = 'http://localhost:8765';
+  // BRIDGE_URL imported from ../../bridgeConfig.js
   const realBase = base || 'https://api.anthropic.com';
 
   return new Anthropic({
@@ -326,17 +325,16 @@ export function AITab({ context }) {
         if (useFileAsFallback) {
           // No explicit provider saved. Check if user has any config in localStorage.
           if (!hasLocalBase && !hasLocalKey) {
-            // Truly fresh session — use built-in deepseek defaults (consistent with Settings UI)
-            // instead of the file's yxai88 config. The file's API key is still a fallback.
-            base = 'https://api.deepseek.com/anthropic';
-            model = model || 'deepseek-v4-pro';
-            pref = 'authToken';
+            // Truly fresh session — use Claude Official defaults
+            base = '';
+            model = model || 'claude-sonnet-4-6';
+            pref = 'apiKey';
             // Persist these defaults so state is consistent across tabs/sessions
-            localStorage.setItem('ai_provider', 'deepseek');
+            localStorage.setItem('ai_provider', 'claude-official');
             localStorage.setItem('anthropic_base_url', base);
             localStorage.setItem('anthropic_auth_style_pref', pref);
             if (!hasLocalModel) localStorage.setItem('anthropic_model', model);
-            console.info('[AI] Fresh session — defaulting to DeepSeek (matches Settings UI)');
+            console.info('[AI] Fresh session — defaulting to Claude Official');
           } else {
             // User has some config in localStorage but no explicit provider.
             // Use their saved config, not the file's baseURL.
@@ -368,12 +366,6 @@ export function AITab({ context }) {
         }
       }
       if (!model) model = DEFAULT_ANTHROPIC_MODEL;
-
-      // yxai88 等分组常无 claude-sonnet-4-5；浏览器里若仍存 4.5 会反复 503，迁到默认 4.6
-      if (model === 'claude-sonnet-4-5' && base.includes('yxai88')) {
-        model = DEFAULT_ANTHROPIC_MODEL;
-        localStorage.setItem('anthropic_model', model);
-      }
 
       setBaseURL(base);
       setApiKey(secret);
@@ -420,7 +412,7 @@ export function AITab({ context }) {
   };
 
   // === Claude Code (local CLI) mode ===
-  const BRIDGE_URL = 'http://localhost:8765';
+  // BRIDGE_URL imported from ../../bridgeConfig.js
   const [ccOutput, setCcOutput] = useState('');
 
   // === LLM Interaction Logging (fire-and-forget to vital-bridge) ===
@@ -751,7 +743,7 @@ export function AITab({ context }) {
           ? systemPrompt + '\n\n' + VISUAL_SYSTEM_PROMPT
           : systemPrompt;
 
-        const isAnthropicProvider = !baseURL || baseURL.includes('api.anthropic.com') || baseURL.includes('api.yxai88.com');
+        const isAnthropicProvider = !baseURL || baseURL.includes('api.anthropic.com');
         const streamSystemPrompt = isAnthropicProvider
           ? finalSystemPrompt
           : finalSystemPrompt + '\n\n## Code Output Format\nYou MUST output your Strudel code inside a fenced code block:\n```strudel\n// your complete code here\n```\n\nFirst, explain your approach in 1-2 sentences. Then output the code block.';
