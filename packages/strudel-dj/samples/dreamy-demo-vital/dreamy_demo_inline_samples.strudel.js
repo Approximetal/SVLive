@@ -95,7 +95,7 @@ await samples({
     gs5: 'flute_1/gs5.wav',
     c6: 'flute_1/c6.wav',
   },
-}, 'https://raw.githubusercontent.com/Approximetal/SVLive/12204280a2788803f464029196d6196aa2963e33/packages/strudel-dj/samples/dreamy-demo-vital/');
+}, 'https://raw.githubusercontent.com/Approximetal/SVLive/09dcd89c3db46dd08aa067bc1425316574f532ef/packages/strudel-dj/samples/dreamy-demo-vital/');
 
 let KEY = 'vital_keystation';
 let PAD = 'vital_flute_1';
