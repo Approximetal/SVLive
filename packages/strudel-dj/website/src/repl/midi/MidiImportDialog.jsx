@@ -5,7 +5,9 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { parseMidiFile, getMidiBpm } from './midiParser';
 import { getTrackInfo, suggestPresetsForTrack, midiToStrudel } from './midiToStrudel';
 import { PRESET_CATEGORIES, slugToDisplayName } from './vitalPresets';
+import { getAudioContext, connectToDestination } from '@strudel/webaudio';
 import cx from '@src/cx.mjs';
+import BRIDGE_URL from '../bridgeConfig.js';
 
 /**
  * Fetch live preset list from vital-bridge server.
@@ -13,7 +15,7 @@ import cx from '@src/cx.mjs';
  */
 async function fetchServerPresets() {
   try {
-    const res = await fetch('http://localhost:8765/presets');
+    const res = await fetch(BRIDGE_URL + '/presets');
     if (!res.ok) return null;
     const data = await res.json();
     return data.presets; // [{name, pack, path, relative}, ...]
@@ -36,6 +38,8 @@ export function MidiImportButton({ context }) {
   const [guessInstrument, setGuessInstrument] = useState(true);
   const [flatMode, setFlatMode] = useState(false);
   const [serverPresets, setServerPresets] = useState(null); // live preset list from server
+  const [previewingSlug, setPreviewingSlug] = useState(null); // slug of preset currently previewing
+  const previewSourceRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Fetch server presets on first open
@@ -133,6 +137,62 @@ export function MidiImportButton({ context }) {
       delete next[trackIndex];
       return next;
     });
+  };
+
+  // Preview a preset from the vital-bridge (MIDI dialog picker)
+  const handlePreviewPreset = async (slug, e) => {
+    if (e) e.stopPropagation();
+    // Stop any currently playing preview
+    if (previewSourceRef.current) {
+      try { previewSourceRef.current.stop(); } catch {}
+      previewSourceRef.current = null;
+    }
+    // Toggle: if already previewing this slug, just stop
+    if (previewingSlug === slug) {
+      setPreviewingSlug(null);
+      return;
+    }
+
+    // Find the preset in serverPresets by slug
+    if (!serverPresets) return;
+    const match = serverPresets.find(
+      (p) => p.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') === slug
+    );
+    if (!match) return;
+
+    setPreviewingSlug(slug);
+
+    try {
+      await fetch(BRIDGE_URL + '/load', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: match.path }),
+      });
+
+      const renderRes = await fetch(BRIDGE_URL + '/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: 60, velocity: 0.7, note_dur: 1.0, render_dur: 3.0 }),
+      });
+      if (!renderRes.ok) throw new Error('Render failed');
+
+      const arrayBuffer = await renderRes.arrayBuffer();
+      const ctx = getAudioContext();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      connectToDestination(source);
+      source.start(ctx.currentTime);
+      source.onended = () => {
+        setPreviewingSlug(null);
+        previewSourceRef.current = null;
+      };
+      previewSourceRef.current = source;
+    } catch (err) {
+      console.error('[MIDI Preview] Failed:', err);
+      setPreviewingSlug(null);
+    }
   };
 
   // Allow re-opening the dialog to change presets (without re-selecting file)
@@ -243,6 +303,8 @@ export function MidiImportButton({ context }) {
                   onSetPreset={(slug) => setPresetForTrack(info.index, slug)}
                   onClearPreset={() => clearPresetForTrack(info.index)}
                   serverPresets={serverPresets}
+                  previewingSlug={previewingSlug}
+                  onPreviewPreset={handlePreviewPreset}
                 />
               ))}
             </div>
@@ -289,7 +351,7 @@ export function MidiImportButton({ context }) {
 /**
  * Track row with preset selector
  */
-function TrackRow({ info, preset, onSetPreset, onClearPreset, serverPresets }) {
+function TrackRow({ info, preset, onSetPreset, onClearPreset, serverPresets, previewingSlug, onPreviewPreset }) {
   const [showPicker, setShowPicker] = useState(false);
   const [searchText, setSearchText] = useState('');
   const suggestions = suggestPresetsForTrack(info);
@@ -392,16 +454,30 @@ function TrackRow({ info, preset, onSetPreset, onClearPreset, serverPresets }) {
                 <div className="mb-2">
                   <div className="text-xs text-white/40 mb-1 px-1">⭐ Recommended for {info.category}</div>
                   {suggestions.map((slug) => (
-                    <button
-                      key={slug}
-                      onClick={() => { onSetPreset(slug); setShowPicker(false); setSearchText(''); }}
-                      className={cx(
-                        'block w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10',
-                        preset === slug ? 'text-blue-400 bg-blue-500/10' : 'text-white/80'
+                    <div key={slug} className="flex items-center gap-1">
+                      <button
+                        onClick={() => { onSetPreset(slug); setShowPicker(false); setSearchText(''); }}
+                        className={cx(
+                          'flex-1 text-left px-2 py-1 rounded text-xs hover:bg-white/10',
+                          preset === slug ? 'text-blue-400 bg-blue-500/10' : 'text-white/80'
+                        )}
+                      >
+                        ⭐ {slugToDisplayName(slug)}
+                      </button>
+                      {serverPresets && (
+                        <button
+                          className={`w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0 ${
+                            previewingSlug === slug
+                              ? 'bg-purple-500 text-white'
+                              : 'bg-white/10 text-white/40 hover:bg-white/20'
+                          }`}
+                          onClick={(e) => onPreviewPreset(slug, e)}
+                          title="Preview sound"
+                        >
+                          {previewingSlug === slug ? '■' : '▶'}
+                        </button>
                       )}
-                    >
-                      ⭐ {slugToDisplayName(slug)}
-                    </button>
+                    </div>
                   ))}
                   <div className="border-t border-white/10 mt-1 mb-1" />
                 </div>
@@ -412,16 +488,30 @@ function TrackRow({ info, preset, onSetPreset, onClearPreset, serverPresets }) {
                 <div key={group} className="mb-2">
                   <div className="text-xs text-white/40 mb-1 px-1 font-semibold">{group}</div>
                   {presets.map(({ slug, name }) => (
-                    <button
-                      key={slug}
-                      onClick={() => { onSetPreset(slug); setShowPicker(false); setSearchText(''); }}
-                      className={cx(
-                        'block w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10',
-                        preset === slug ? 'text-blue-400 bg-blue-500/10' : 'text-white/80'
+                    <div key={slug} className="flex items-center gap-1">
+                      <button
+                        onClick={() => { onSetPreset(slug); setShowPicker(false); setSearchText(''); }}
+                        className={cx(
+                          'flex-1 text-left px-2 py-1 rounded text-xs hover:bg-white/10',
+                          preset === slug ? 'text-blue-400 bg-blue-500/10' : 'text-white/80'
+                        )}
+                      >
+                        {name}
+                      </button>
+                      {serverPresets && (
+                        <button
+                          className={`w-5 h-5 rounded flex items-center justify-center text-[10px] shrink-0 ${
+                            previewingSlug === slug
+                              ? 'bg-purple-500 text-white'
+                              : 'bg-white/10 text-white/40 hover:bg-white/20'
+                          }`}
+                          onClick={(e) => onPreviewPreset(slug, e)}
+                          title="Preview sound"
+                        >
+                          {previewingSlug === slug ? '■' : '▶'}
+                        </button>
                       )}
-                    >
-                      {name}
-                    </button>
+                    </div>
                   ))}
                 </div>
               ))}

@@ -489,7 +489,8 @@ export async function midiToStrudel(rawBuffer, options = {}) {
     for (const slug of [...usedPresets].sort()) {
       const displayName = presetNames[slug]
         || slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      vitalLoader.push(`await vital('${displayName}')  // → .s("vital_${slug}")`);
+      const escapedName = displayName.replace(/'/g, "\\'");
+      vitalLoader.push(`await vital('${escapedName}')  // → .s("vital_${slug}")`);
     }
     vitalLoader.push('');
   }

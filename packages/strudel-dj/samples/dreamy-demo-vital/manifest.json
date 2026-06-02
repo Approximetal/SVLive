@@ -1,0 +1,57 @@
+{
+  "name": "dreamy-demo-vital",
+  "github_spec": "github:Approximetal/SVLive/main/packages/strudel-dj/samples/dreamy-demo-vital",
+  "raw_base": "https://raw.githubusercontent.com/Approximetal/SVLive/main/packages/strudel-dj/samples/dreamy-demo-vital/",
+  "render": {
+    "low": 36,
+    "high": 84,
+    "step": 4,
+    "velocity": 0.7,
+    "note_dur": 1.0,
+    "render_dur": 4.0
+  },
+  "presets": [
+    {
+      "preset": "Pluck - SAD",
+      "sound_key": "vital_pluck_sad",
+      "folder": "pluck_sad",
+      "source_path": "/Users/zhaozy/mnt/music/Jek's Vital Presets/Gas Station/Presets/Pluck - SAD.vital",
+      "samples": 13
+    },
+    {
+      "preset": "CH - Chill E-Piano Lofi",
+      "sound_key": "vital_ch_chill_e_piano_lofi",
+      "folder": "ch_chill_e_piano_lofi",
+      "source_path": "/Users/zhaozy/mnt/music/Jek's Vital Presets/Florixel - Vital Essentials/Presets/CH - Chill E-Piano Lofi.vital",
+      "samples": 13
+    },
+    {
+      "preset": "Damped Horn",
+      "sound_key": "vital_damped_horn",
+      "folder": "damped_horn",
+      "source_path": "/Users/zhaozy/mnt/music/Vital/Level 8/Presets/Factory Presets/Damped Horn.vital",
+      "samples": 13
+    },
+    {
+      "preset": "Keystation",
+      "sound_key": "vital_keystation",
+      "folder": "keystation",
+      "source_path": "/Users/zhaozy/mnt/music/Vital/Yuli Yolo/Presets/Factory Presets/Keystation.vital",
+      "samples": 13
+    },
+    {
+      "preset": "Lead 3",
+      "sound_key": "vital_lead_3",
+      "folder": "lead_3",
+      "source_path": "/Users/zhaozy/mnt/music/Jek's Vital Presets/Kimi LoFi - Vital Presets Vol 1/Presets/Lead 3.vital",
+      "samples": 13
+    },
+    {
+      "preset": "Flute 1",
+      "sound_key": "vital_flute_1",
+      "folder": "flute_1",
+      "source_path": "/Users/zhaozy/mnt/music/Jek's Vital Presets/Kimi Sounds - Organic Presets/Presets/Flute 1.vital",
+      "samples": 13
+    }
+  ]
+}

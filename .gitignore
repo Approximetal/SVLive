@@ -29,3 +29,9 @@ __pycache__/
 # Vital bridge caches and logs
 packages/vital-bridge/essentia_cache/
 packages/vital-bridge/llm_logs/
+
+# IDE config
+.vscode/
+
+# Planning docs (keep local only)
+docs/
